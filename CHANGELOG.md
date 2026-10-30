@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3 — 2026-10-30
+
+- Dependency updates (minor and patch groups) and workflow action bumps. No source change.
+
 ## 0.0.2 — 2026-10-30
 
 - Fix: every data table passed its own `<tr>` into the library table's `head` slot (which already wraps one): a row nested in a

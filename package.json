@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/content-hub-ui",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Content hub admin console: roadmap, tasks, composer, publishing instances and budgets. Vue 3 SPA on @meddleware/ui; exports ContentHubView.",
   "author": "Meddleware <dev@meddleware.co.uk>",
   "license": "0BSD",

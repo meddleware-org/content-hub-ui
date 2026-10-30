@@ -25,7 +25,7 @@
 **Deployed by:** the instance's `post-bootstrap/content-hub/` (C9)
 **Build args:** VITE_BRAND_NAME, VITE_DOCS_URL — not secret
 **Deployment status:** live on testnet (R2, 2026-10-30); 0.0.2 released, pinned by consensus (cosign valid) and deployed 2026-10-30
-**Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed)
+**Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed); 0.0.3 re-verified 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps)
 **Reviewer:** Internal review
 **Severity ceiling:** Medium — the admin console of an operator; it holds no credential (Access does) and the server authorises every action
 **Status:** C7 — all seven sections implemented against the admin API; 100 vitest tests; 16 Chromium tests (flows, phone width, axe in every theme and season); lint (stylelint, eslint + a11y, html-validate), type-check, build, CSP and dist checks green; the runtime image (built from this `dist`) passes `scripts/smoke.sh`. The full image build waits for `@meddleware/content-hub-client` to be published (F8)
