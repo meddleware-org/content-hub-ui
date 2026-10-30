@@ -207,7 +207,7 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 - [x] deployment prepared: its own Deployment (non-root, read-only root, no token), only nginx-ingress may reach it, no
   egress; served on `hub.` behind Access with `X-Robots-Tag: noindex` — 2026-10-29, C9
 - [x] deployed behind the Access application (`hub.` redirects to sign-in; `/api` without a session redirects too) — 2026-10-30, R2
-- [ ] signed in as the operator: sign-in, session expiry and logout checked live — the maintainer's first sign-in
+- [x] signed in as the operator: one-time PIN, security-key MFA, the console loading ("Signed in as admin@meddleware.co.uk"), sign-out and the re-prompt checked live by the maintainer; a second address is refused — 2026-10-30
 
 ### pre-mainnet
 - [ ] external review
@@ -246,3 +246,4 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
   recorded; invariants I2–I10. 100 unit and 16 browser tests; runtime image smoke ok.
 - 2026-10-29 — C9: deployment prepared in the operator's workspace; the console passed against the real admin API in the local end-to-end dry run.
 - 2026-10-30 — R2: released (v0.0.1), image signed and deployed behind Access on `hub.`; the npm package is published.
+- 2026-10-30 — live sign-in verified by the maintainer (PIN + security key); `hub.` admits only `admin@meddleware.co.uk` (own Access policy).
