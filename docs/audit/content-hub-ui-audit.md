@@ -19,13 +19,13 @@
 **Hosting:** static-server 0.1.11 image
 **Embedding hosts:** none yet (a host console may embed ContentHubView)
 **VITE_* inventory:** VITE_BRAND_NAME, VITE_DOCS_URL
-**Images:** quay.io/meddleware-org/content-hub-ui (unpublished)
+**Images:** quay.io/meddleware-org/content-hub-ui (0.0.2)
 **Base images:** node:26-slim@sha256:0d1e3358… (build, $BUILDPLATFORM) · static-server:0.1.11@sha256:94685b94… (runtime)
 **Runtime user:** 65534   **Runtime FS:** read-only
 **Deployed by:** the instance's `post-bootstrap/content-hub/` (C9)
 **Build args:** VITE_BRAND_NAME, VITE_DOCS_URL — not secret
-**Deployment status:** unpublished (0.0.1 local, Series C C4)
-**Review date:** 2026-10-29
+**Deployment status:** live on testnet (R2, 2026-10-30); 0.0.2 released, pinned by consensus (cosign valid) and deployed 2026-10-30
+**Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed)
 **Reviewer:** Internal review
 **Severity ceiling:** Medium — the admin console of an operator; it holds no credential (Access does) and the server authorises every action
 **Status:** C7 — all seven sections implemented against the admin API; 100 vitest tests; 16 Chromium tests (flows, phone width, axe in every theme and season); lint (stylelint, eslint + a11y, html-validate), type-check, build, CSP and dist checks green; the runtime image (built from this `dist`) passes `scripts/smoke.sh`. The full image build waits for `@meddleware/content-hub-client` to be published (F8)
