@@ -4,7 +4,7 @@ The content hub's admin console: dashboard, roadmap, tasks, composer, publishing
 single-page app on `@meddleware/ui`, served by static-server on the admin host, and exported as `ContentHubView`
 for embedding. Backend: [content-hub-service](https://github.com/meddleware-org/content-hub-service).
 
-**Status (0.0.1):** all seven sections work against the admin API.
+**Status (0.0.2):** all seven sections work against the admin API.
 
 | Section | What it does |
 | --- | --- |

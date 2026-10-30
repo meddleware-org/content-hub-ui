@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.2 — unreleased
+## 0.0.2 — 2026-10-30
 
 - Fix: every data table passed its own `<tr>` into the library table's `head` slot (which already wraps one): a row nested in a
   row collapsed the header into the first column, so headers did not line up with their data (and on a phone only the first
