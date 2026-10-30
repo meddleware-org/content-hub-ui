@@ -1,0 +1,15 @@
+node_modules/
+dist/
+
+# Local environment overrides (never commit)
+.env
+.env.*
+!.env.example
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local test reporter output
+.vitest/
+coverage/

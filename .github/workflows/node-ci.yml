@@ -1,0 +1,74 @@
+name: Node CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # The release workflow runs the same checks on the tagged commit.
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Type-check and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: node .github/audit-gate.mjs
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint CSS (stylelint)
+        run: npm run lint:css
+
+      - name: Lint JS (eslint + vuejs-a11y)
+        run: npm run lint:js
+
+      - name: Lint HTML (html-validate)
+        run: npm run lint:html
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: No test support in the built files
+        run: npm run check:dist
+
+      - name: Third-party licence notices
+        run: npm run check:licenses && test -s dist/THIRD_PARTY_LICENSES
+
+      # The built console in a real browser against a mocked admin API, under the production CSP, with no network:
+      # session expiry, drafts, composing across platforms, publishing moves, the public-roadmap preview.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests (mocked admin API)
+        run: npm run test:e2e
+
+  image:
+    name: Image (build and probe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Not pushed. Builds the Dockerfile as the release does (the inline-script check included) and runs the
+      # container the way the cluster does: non-root user, read-only root, no capabilities.
+      - name: Build (not pushed)
+        run: docker build --tag content-hub-ui:ci .
+      - name: Probe the container (user, /, headers, bundle, licences)
+        run: bash scripts/smoke.sh content-hub-ui:ci

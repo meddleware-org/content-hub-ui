@@ -1,0 +1,3 @@
+# Content hub administration
+
+This host is a private administration console. It has no public content and no API for automated clients.
