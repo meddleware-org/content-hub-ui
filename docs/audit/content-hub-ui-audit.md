@@ -200,13 +200,14 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 
 ### pre-testnet
 - [x] `SECURITY.md` present
-- [ ] `@meddleware/content-hub-client` published, lockfile regenerated, CI and image green — F8 (R2)
-- [ ] published with provenance — R2
+- [x] `@meddleware/content-hub-client` published, lockfile regenerated, CI and image green — F8 (2026-10-30, R2)
+- [x] image signed and pinned; npm package published with provenance — 2026-10-30, R2
 - [x] the built console against the REAL admin API (the deployment's local end-to-end run: every section, the run's data,
   a draft stored; production CSP, no page error) — 2026-10-29, C9
 - [x] deployment prepared: its own Deployment (non-root, read-only root, no token), only nginx-ingress may reach it, no
   egress; served on `hub.` behind Access with `X-Robots-Tag: noindex` — 2026-10-29, C9
-- [ ] deployed behind the Access application; sign-in, session expiry and logout checked live — R2
+- [x] deployed behind the Access application (`hub.` redirects to sign-in; `/api` without a session redirects too) — 2026-10-30, R2
+- [ ] signed in as the operator: sign-in, session expiry and logout checked live — the maintainer's first sign-in
 
 ### pre-mainnet
 - [ ] external review
@@ -244,3 +245,4 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 - 2026-10-29 — C7: the console (F4 RESOLVED); F5, F6 Positive; F7 found by the new axe gate and worked around; F8, F9
   recorded; invariants I2–I10. 100 unit and 16 browser tests; runtime image smoke ok.
 - 2026-10-29 — C9: deployment prepared in the operator's workspace; the console passed against the real admin API in the local end-to-end dry run.
+- 2026-10-30 — R2: released (v0.0.1), image signed and deployed behind Access on `hub.`; the npm package is published.
