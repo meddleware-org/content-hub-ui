@@ -208,13 +208,11 @@ async function save() {
         <TableScroll label="Roadmap items">
         <UiDataTable empty="No items match.">
           <template #head>
-            <tr>
               <th scope="col">Internal title</th>
               <th scope="col">Public title</th>
               <th scope="col">Shown to</th>
               <th scope="col">Status</th>
               <th scope="col"><span class="sr-only">Actions</span></th>
-            </tr>
           </template>
           <tr v-for="i in items.items.value" :key="i.id">
             <th scope="row">{{ i.internal_title }}<br /><span class="muted">{{ phaseName(i.phase_id) }} · {{ i.item_type.replace('_', ' ') }}</span></th>

@@ -41,6 +41,14 @@ The content hub's admin console. See [README.md](README.md) and the service's
 - `@meddleware/ui`'s `UiBadge` and `UiSegmentedControl` fail axe contrast in the light themes (0.1.34); the console
   uses its own `StatusBadge` and `ModeSwitch` until the library is fixed (audit F7).
 
+## Looking at it
+
+`npm run shots` (Playwright, the built app, mocked API) writes a PNG per section, viewport (phone 390, desktop 1280) and theme
+to `test-results/screens/`: open them and look. Assertions and axe cannot see misaligned columns, clipped content or a
+layout that only works on a wide screen; screenshots found two real defects here (a `<tr>` passed into the library table's
+`head` slot, which already wraps one, nested a row in a row and collapsed every header into the first column; and wide tables on
+a phone showing only their first column with no sign of more). Nothing is compared to a baseline.
+
 ## Tests
 
 `npm test` (vitest + @vue/test-utils): libraries, the HTTP layer, every section through `ContentHubView` against

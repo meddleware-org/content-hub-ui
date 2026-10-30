@@ -7,6 +7,8 @@ const PORT = 4291
 
 export default defineConfig({
   testDir: './e2e',
+  // The screenshot capture (npm run shots) is for looking, not asserting: only run it when asked.
+  testIgnore: process.env.SHOTS ? [] : ['**/screens.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.0.1 — unreleased
+## 0.0.2 — unreleased
+
+- Fix: every data table passed its own `<tr>` into the library table's `head` slot (which already wraps one): a row nested in a
+  row collapsed the header into the first column, so headers did not line up with their data (and on a phone only the first
+  column showed). The six slots now pass bare header cells; a unit test fails on a row inside a row or a row whose cell count
+  differs from the header's.
+- Wide tables show a one-line "swipe sideways" hint on narrow screens and soft edge shadows where more lies beyond.
+- `npm run shots`: screenshots of every section at phone and desktop width in both themes, for looking at the console.
+
+## 0.0.1 — released 2026-10-30
 
 - The console: dashboard, roadmap (internal and public wording, editing, the public documents for people and bots),
   tasks (only the allowed moves, links, blocked reasons), composer (per-platform fit, segmentation bar, per-platform

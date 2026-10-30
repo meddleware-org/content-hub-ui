@@ -177,12 +177,10 @@ const changes = (a: AuditEntry) => describeChange(a.before, a.after, capName)
       <TableScroll label="Caps and usage">
       <UiDataTable empty="Loading…">
         <template #head>
-          <tr>
             <th scope="col">Scope</th>
             <th scope="col">Used</th>
             <th scope="col">Monthly cap (USD)</th>
             <th scope="col">Posts a day</th>
-          </tr>
         </template>
         <tr v-for="r in table" :key="r.key">
           <th scope="row">{{ r.label }}</th>

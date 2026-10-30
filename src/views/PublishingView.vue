@@ -268,14 +268,12 @@ async function createTarget() {
       <TableScroll label="Posts on targets">
       <UiDataTable empty="No posts on targets yet.">
         <template #head>
-          <tr>
             <th scope="col">Post</th>
             <th scope="col">Target</th>
             <th scope="col">State</th>
             <th scope="col">Scheduled ({{ c.zone.value }})</th>
             <th scope="col">Result</th>
             <th scope="col"><span class="sr-only">Actions</span></th>
-          </tr>
         </template>
         <tr v-for="i in instances.items.value" :key="i.id">
           <th scope="row">{{ titles[i.post_id] ?? `post #${i.post_id}` }}<br /><span class="muted">instance #{{ i.id }}</span></th>
@@ -356,12 +354,10 @@ async function createTarget() {
       <TableScroll label="Delivery attempts">
       <UiDataTable empty="No attempts yet.">
         <template #head>
-          <tr>
             <th scope="col">Started ({{ c.zone.value }})</th>
             <th scope="col">Outcome</th>
             <th scope="col">HTTP</th>
             <th scope="col">What the platform said</th>
-          </tr>
         </template>
         <tr v-for="a in detail.attempts" :key="a.id">
           <td>{{ formatDateTime(a.started_at, c.zone.value) }}</td>
@@ -383,13 +379,11 @@ async function createTarget() {
       <TableScroll label="Targets">
       <UiDataTable empty="No targets yet.">
         <template #head>
-          <tr>
             <th scope="col">Target</th>
             <th scope="col">Credential (a variable name)</th>
             <th scope="col">Enabled</th>
             <th scope="col">Sandbox</th>
             <th scope="col">Sends for real</th>
-          </tr>
         </template>
         <tr v-for="t in c.reference.value?.targets ?? []" :key="t.id">
           <th scope="row">{{ t.name }}<br /><span class="muted">{{ t.platform_code }}<template v-if="t.external_ref"> · {{ t.external_ref }}</template></span></th>

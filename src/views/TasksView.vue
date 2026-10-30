@@ -140,13 +140,11 @@ const platformLabel = (p: { platform_code: string; platform_target_id: number | 
       <TableScroll label="Tasks">
       <UiDataTable empty="No tasks match.">
         <template #head>
-          <tr>
             <th scope="col">Task</th>
             <th scope="col">Type</th>
             <th scope="col">Status</th>
             <th scope="col">Next review</th>
             <th scope="col"><span class="sr-only">Actions</span></th>
-          </tr>
         </template>
         <tr v-for="t in tasks.items.value" :key="t.id">
           <th scope="row">
