@@ -231,10 +231,10 @@ describe('the schedule', () => {
     await openTab(h, 'Schedule')
     expect(panelText(h)).toContain('Send to mastodon test (instance #50)')
     await segment(h, 'Calendar')
-    expect(h.w.find('table.cal').exists()).toBe(true)
-    expect(h.w.find('table.cal').text()).toContain('Send to mastodon test')
+    expect(h.w.find('div.cal table').exists()).toBe(true)
+    expect(h.w.find('div.cal table').text()).toContain('Send to mastodon test')
     const zone = (h.w.find('#console-zone').element as HTMLSelectElement).value
-    expect(h.w.find('table.cal caption').text()).toContain(`times in ${zone}`)
+    expect(h.w.find('div.cal table caption').text()).toContain(`times in ${zone}`)
   })
 })
 

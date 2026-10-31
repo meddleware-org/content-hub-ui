@@ -56,10 +56,15 @@ jobs:
       # The built console in a real browser against a mocked admin API, under the production CSP, with no network:
       # session expiry, drafts, composing across platforms, publishing moves, the public-roadmap preview.
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Browser tests (mocked admin API)
         run: npm run test:e2e
+        env:
+          E2E_BROWSERS: all
+
+      - name: Lighthouse (accessibility 100, best practices, bundle budgets)
+        run: npx lhci autorun
 
   image:
     name: Image (build and probe)

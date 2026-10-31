@@ -1,67 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Budgets, PlatformDefinition, PlatformTarget, SpendCap } from '../src/api/types.js'
-import { describeChange, rows } from '../src/lib/budgets.js'
-import { MONTHS, monthGrid, shiftMonth } from '../src/lib/calendar.js'
+import { describeChange, level, percent, rows } from '../src/lib/budgets.js'
 import { bands, costOf, normalise, preview, truncateWithLink, usage } from '../src/lib/composer.js'
 import { DRAFT_KEY, clearDraft, isBlank, loadDraft, parseDraft, saveDraft } from '../src/lib/drafts.js'
-import { formatUsd, level, parseUsd, percent } from '../src/lib/money.js'
-import { dayKey, formatDateTime, fromLocalInput, isZone, offsetMinutes, toLocalInput } from '../src/lib/time.js'
+import { itemBody, itemFields, newItem, newPhase, phaseBody, phaseFields } from '../src/lib/roadmap-form.js'
+import { statusLabel, statusTone } from '../src/lib/status.js'
 import { FakeApi } from './support/fake-api.js'
 
-describe('time zones', () => {
-  it('converts a wall time in a zone to the right UTC instant, either side of a clock change', () => {
-    expect(fromLocalInput('2026-07-01T09:30', 'Europe/London')).toBe('2026-07-01T08:30:00.000Z') // BST
-    expect(fromLocalInput('2026-12-01T09:30', 'Europe/London')).toBe('2026-12-01T09:30:00.000Z') // GMT
-    expect(fromLocalInput('2026-07-01T09:30', 'America/New_York')).toBe('2026-07-01T13:30:00.000Z')
-    expect(fromLocalInput('2026-03-01T09:30', 'Asia/Kolkata')).toBe('2026-03-01T04:00:00.000Z') // +05:30
-    expect(fromLocalInput('2026-07-01T09:30', 'UTC')).toBe('2026-07-01T09:30:00.000Z')
-  })
-
-  it('handles the hour that does not exist and the hour that happens twice', () => {
-    // Clocks go forward at 01:00 UTC on 2026-03-29 in London: 01:30 does not exist and moves forward by the gap.
-    expect(fromLocalInput('2026-03-29T01:30', 'Europe/London')).toBe('2026-03-29T01:30:00.000Z')
-    expect(toLocalInput('2026-03-29T01:30:00.000Z', 'Europe/London')).toBe('2026-03-29T02:30')
-    // They go back at 01:00 UTC on 2026-10-25: 01:30 happens twice; the first one (BST) is taken.
-    expect(fromLocalInput('2026-10-25T01:30', 'Europe/London')).toBe('2026-10-25T00:30:00.000Z')
-  })
-
-  it('round-trips and rejects nonsense', () => {
-    for (const tz of ['UTC', 'Europe/London', 'America/Los_Angeles', 'Australia/Sydney']) {
-      for (const iso of ['2026-01-15T10:00:00.000Z', '2026-06-15T10:00:00.000Z']) {
-        expect(fromLocalInput(toLocalInput(iso, tz), tz)).toBe(iso)
-      }
-    }
-    for (const bad of ['', 'tomorrow', '2026-13-01T10:00', '2026-02-31T10:00', '2026-02-10 10:00']) expect(fromLocalInput(bad, 'UTC')).toBeNull()
-    expect(toLocalInput(null, 'UTC')).toBe('')
-    expect(toLocalInput('not a date', 'UTC')).toBe('')
-  })
-
-  it('knows offsets, zones and day boundaries', () => {
-    expect(offsetMinutes(Date.parse('2026-07-01T12:00:00Z'), 'Europe/London')).toBe(60)
-    expect(offsetMinutes(Date.parse('2026-12-01T12:00:00Z'), 'Europe/London')).toBe(0)
-    expect(isZone('Europe/London')).toBe(true)
-    expect(isZone('Mars/Olympus')).toBe(false)
-    // 23:30 UTC on the 30th is already the 31st in Sydney (+11 in October/November... daylight saving).
-    expect(dayKey('2026-10-30T23:30:00Z', 'UTC')).toBe('2026-10-30')
-    expect(dayKey('2026-10-30T23:30:00Z', 'Australia/Sydney')).toBe('2026-10-31')
-    expect(formatDateTime('2026-07-01T08:30:00Z', 'Europe/London')).toContain('09:30')
-    expect(formatDateTime(null, 'UTC')).toBe('—')
-  })
-})
-
-describe('money', () => {
-  it('formats and parses without floating point', () => {
-    expect(formatUsd(15_000)).toBe('$0.015')
-    expect(formatUsd(200_000)).toBe('$0.20')
-    expect(formatUsd(0)).toBe('$0.00')
-    expect(formatUsd(1_234_567_890)).toBe('$1,234.56789')
-    expect(parseUsd('0.015')).toBe(15_000)
-    expect(parseUsd('$25')).toBe(25_000_000)
-    expect(parseUsd(' 0.1 ')).toBe(100_000)
-    for (const bad of ['', '-1', '1.2345678', 'abc', '1,000', '1e3', '99999999999']) expect(parseUsd(bad), bad).toBeNull()
-    for (const n of [0, 1, 15_000, 999_999, 7_654_321]) expect(parseUsd(formatUsd(n).replace(/[$,]/g, ''))).toBe(n)
-  })
-
+describe('budget levels', () => {
   it('levels follow the service: 50, 80 and 100 percent', () => {
     expect([level(0, 100), level(49, 100), level(50, 100), level(79, 100), level(80, 100), level(100, 100), level(150, 100)]).toEqual([0, 0, 50, 50, 80, 100, 100])
     expect(level(1, 0)).toBe(100)
@@ -101,20 +47,6 @@ describe('unsent drafts', () => {
     expect(saveDraft(good, null)).toBe(false)
     expect(DRAFT_KEY).toContain('draft')
     expect(isBlank({ title: ' ', body: '' })).toBe(true)
-  })
-})
-
-describe('calendar', () => {
-  it('lays out a month in Monday-first weeks', () => {
-    const weeks = monthGrid(2026, 10) // 1 Oct 2026 is a Thursday
-    expect(weeks[0]!.map((c) => c.date)).toEqual([28, 29, 30, 1, 2, 3, 4])
-    expect(weeks[0]![3]!.day).toBe('2026-10-01')
-    expect(weeks.flat().filter((c) => c.inMonth)).toHaveLength(31)
-    expect(weeks.every((w) => w.length === 7)).toBe(true)
-    expect(weeks.at(-1)!.some((c) => c.inMonth)).toBe(true)
-    expect(shiftMonth(2026, 12, 1)).toEqual({ year: 2027, month: 1 })
-    expect(shiftMonth(2026, 1, -1)).toEqual({ year: 2025, month: 12 })
-    expect(MONTHS).toHaveLength(12)
   })
 })
 
@@ -233,5 +165,33 @@ describe('composer previews', () => {
     const limits = { ...preview(t, d, 'T', '').limits!, primary: 60 }
     const cut = truncateWithLink('Read https://example.org/a/long/link/that/is/atomic and more words follow', 'https://x.org/p', 'plain', limits)!
     expect(cut).not.toMatch(/example\.org\/a\/long\/link\/that\/is\/ato[^m]/)
+  })
+})
+
+describe('status words and tones', () => {
+  it('says a status in words, with the tone the badge shows it in', () => {
+    expect(statusLabel('in_progress')).toBe('in progress')
+    expect(statusLabel('manual_required')).toBe('manual')
+    expect(statusLabel('a_b_c')).toBe('a b c')
+    expect([statusTone('posted'), statusTone('queued'), statusTone('failed'), statusTone('something-new')]).toEqual(['ok', 'warn', 'danger', 'neutral'])
+  })
+})
+
+describe('roadmap forms', () => {
+  const phase = { id: 1, key: 'p1', sort_order: 2, internal_name: 'Internal', internal_description: 'd', public_name: 'Public', public_description: 'pd', window_start: null, window_end: '2027-01-01T00:00:00Z', visible_human: true, visible_bot: false } as never
+  it('fills a form from a stored phase and makes the request body from the form', () => {
+    const f = phaseFields(phase)
+    expect(f).toMatchObject({ key: 'p1', sort_order: '2', internal_name: 'Internal', window_end: '2027-01-01T00:00:00Z' })
+    expect(phaseBody({ ...f, key: '  p1  ', sort_order: '3' })).toMatchObject({ key: 'p1', sort_order: 3, visible_human: true })
+    expect(newPhase(5)).toMatchObject({ sort_order: '5', key: '', visible_human: false, visible_bot: false })
+  })
+
+  it('sends an empty public title or description as null, never as an empty string', () => {
+    const item = { id: 1, phase_id: 4, key: 'i1', item_type: 'other', internal_title: 'T', internal_description: '', public_title: null, public_description: null, visible_human: false, visible_bot: false, status: 'planned', planned_at: null, due_at: null, public_due_at: null } as never
+    const f = itemFields(item)
+    expect(f).toMatchObject({ phase_id: '4', public_title: '', public_description: '' })
+    expect(itemBody(f)).toMatchObject({ phase_id: 4, public_title: null, public_description: null })
+    expect(itemBody({ ...f, public_title: ' A title ' }).public_title).toBe('A title')
+    expect(newItem('7')).toMatchObject({ phase_id: '7', status: 'planned', item_type: 'other' })
   })
 })

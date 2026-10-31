@@ -2,20 +2,12 @@
 // Monthly spend caps per platform, usage against them, and the audit trail of changes. The instance ceilings (the
 // deployment's configuration) bound every cap; the server refuses a cap above them and is the only enforcer.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { UiButton, UiDataTable, UiNotice, UiPanel } from '@meddleware/ui'
+import { UiButton, UiDataTable, UiEmptyState, UiMeter, UiNotice, UiPager, UiPanel, UiSelectField, UiTextField, usePager } from '@meddleware/ui'
+import { formatDateTime, formatUsd, parseUsd } from '@meddleware/web-utils'
 import { describeError } from '../api/errors.js'
 import type { AuditEntry, Budgets, SpendCap } from '../api/types.js'
-import ErrorNotice from '../components/ErrorNotice.vue'
-import PagerNav from '../components/PagerNav.vue'
-import SelectField from '../components/SelectField.vue'
-import TableScroll from '../components/TableScroll.vue'
-import TextField from '../components/TextField.vue'
-import UsageMeter from '../components/UsageMeter.vue'
 import { useConsole } from '../console.js'
 import { LEVEL_TEXT, describeChange, rows as buildRows } from '../lib/budgets.js'
-import { formatUsd, parseUsd } from '../lib/money.js'
-import { formatDateTime } from '../lib/time.js'
-import { usePager } from '../lib/pager.js'
 
 const c = useConsole()
 const budgets = ref<Budgets | null>(null)
@@ -46,7 +38,7 @@ async function load() {
   }
 }
 
-const audit = usePager<AuditEntry>((cursor) => c.http.get('/audit', { entity_type: 'budgets', cursor, limit: 10 }))
+const audit = usePager<AuditEntry>((cursor) => c.http.get('/audit', { entity_type: 'budgets', cursor, limit: 10 }), describeError)
 onMounted(() => {
   void load()
   void audit.reset()
@@ -166,79 +158,75 @@ const changes = (a: AuditEntry) => describeChange(a.before, a.after, capName)
 
 <template>
   <div class="budgets">
-    <ErrorNotice :message="error" />
-    <UiNotice v-if="saved" type="ok">{{ saved }}</UiNotice>
+    <UiNotice v-if="error" type="error" :message="error" />
+    <UiNotice v-if="saved" type="ok" :message="saved" />
     <UiNotice>
       Nothing is spent without a cap, and every cap starts at zero. {{ ceilingText }} A cap cannot exceed the ceiling; to raise a ceiling, change the deployment's configuration.
       Paid posts reserve their cost when queued; at the cap the post is handed to a person instead.
     </UiNotice>
 
     <UiPanel title="Caps and usage this month" :level="3">
-      <TableScroll label="Caps and usage">
-      <UiDataTable empty="Loading…">
+      <UiDataTable caption="Caps and usage" empty="Loading…" :rows="table.length">
         <template #head>
-            <th scope="col">Scope</th>
-            <th scope="col">Used</th>
-            <th scope="col">Monthly cap (USD)</th>
-            <th scope="col">Posts a day</th>
+          <th scope="col">Scope</th>
+          <th scope="col">Used</th>
+          <th scope="col">Monthly cap (USD)</th>
+          <th scope="col">Posts a day</th>
         </template>
         <tr v-for="r in table" :key="r.key">
           <th scope="row">{{ r.label }}</th>
           <td>
-            <UsageMeter :label="r.label" :used="r.used" :limit="r.cap" :format="formatUsd" />
+            <UiMeter :label="r.label" :used="r.used" :limit="r.cap" :format="formatUsd" />
             <p class="level">{{ LEVEL_TEXT[r.level] }}</p>
           </td>
           <td>
-            <TextField
+            <UiTextField
               v-if="edits[r.key]"
+              v-model="edits[r.key]!.limit"
               :id="`cap-${r.key.replace(/:/g, '-')}`"
               :label="`Monthly cap for ${r.label}`"
-              :model-value="edits[r.key]!.limit"
               inputmode="decimal"
               :placeholder="r.row ? '' : `none set (${formatUsd(r.cap)} applies)`"
               :error="edits[r.key]!.error"
-              @update:model-value="edits[r.key]!.limit = $event"
             />
           </td>
           <td>
-            <TextField
+            <UiTextField
               v-if="edits[r.key]"
+              v-model="edits[r.key]!.daily"
               :id="`daily-${r.key.replace(/:/g, '-')}`"
               :label="`Posts a day for ${r.label}`"
-              :model-value="edits[r.key]!.daily"
               inputmode="numeric"
               placeholder="no limit"
-              @update:model-value="edits[r.key]!.daily = $event"
             />
           </td>
         </tr>
       </UiDataTable>
-      </TableScroll>
-      <div class="actions">
-        <UiButton variant="primary" :disabled="saving || c.expired.value" @click="save">Save changed caps</UiButton>
+      <p class="actions">
+        <UiButton variant="primary" :busy="saving" :disabled="c.expired.value" @click="save">Save changed caps</UiButton>
         <UiButton variant="ghost" :disabled="saving" @click="load">Discard edits and reload</UiButton>
-      </div>
+      </p>
     </UiPanel>
 
     <UiPanel title="Cap one target" :level="3">
-      <SelectField id="cap-target" v-model="addTarget" label="Target" :options="targetChoices" placeholder="Choose a target" />
-      <TextField id="cap-target-limit" v-model="addLimit" label="Monthly limit (USD)" inputmode="decimal" />
+      <UiSelectField id="cap-target" v-model="addTarget" label="Target" :options="targetChoices" placeholder="Choose a target" />
+      <UiTextField id="cap-target-limit" v-model="addLimit" label="Monthly limit (USD)" inputmode="decimal" />
       <UiButton variant="secondary" :disabled="saving || !addTarget" @click="addTargetCap">Add cap</UiButton>
     </UiPanel>
 
     <UiPanel title="Changes to caps" :level="3">
-      <ErrorNotice :message="audit.error.value" />
-      <ul class="trail">
+      <UiNotice v-if="audit.error.value" type="error" :message="audit.error.value" />
+      <ul v-if="audit.items.value.length" class="trail">
         <li v-for="a in audit.items.value" :key="a.id">
-          <strong>{{ formatDateTime(a.at, c.zone.value) }}</strong> by {{ a.actor_subject }}
+          <strong><time :datetime="a.at">{{ formatDateTime(a.at, c.zone.value) }}</time></strong> by {{ a.actor_subject }}
           <ul>
             <li v-for="line in changes(a)" :key="line">{{ line }}</li>
             <li v-if="!changes(a).length" class="muted">no change to any cap</li>
           </ul>
         </li>
-        <li v-if="!audit.items.value.length && !audit.loading.value" class="muted">No changes yet.</li>
       </ul>
-      <PagerNav :index="audit.index.value" :has-next="audit.hasNext.value" :loading="audit.loading.value" label="Cap changes pages" @prev="audit.prev()" @next="audit.next()" />
+      <UiEmptyState v-else-if="!audit.loading.value">No changes yet.</UiEmptyState>
+      <UiPager :index="audit.index.value" :has-next="audit.hasNext.value" :loading="audit.loading.value" label="Cap changes pages" prev-label="Newer" next-label="Older" @prev="audit.prev()" @next="audit.next()" />
     </UiPanel>
   </div>
 </template>
@@ -259,12 +247,7 @@ const changes = (a: AuditEntry) => describeChange(a.before, a.after, capName)
 .actions {
   display: flex;
   gap: var(--space-xs);
-  margin-top: var(--space-sm);
-}
-
-.trail {
-  list-style: none;
-  padding: 0;
+  margin: var(--space-sm) 0 0;
 }
 
 .muted {

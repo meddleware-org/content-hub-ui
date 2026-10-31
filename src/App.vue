@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Standalone shell of the admin console. The console itself is ContentHubView.vue (also exported).
-import { AppHeader, AppFooter, ColorModeControl, useColorMode } from '@meddleware/ui'
+import { AppFooter, AppHeader, ColorModeControl, CopyrightLine, UiAppShell, useColorMode } from '@meddleware/ui'
 import ContentHubView from './ContentHubView.vue'
 
 const { mode, set } = useColorMode('dark')
@@ -9,37 +9,23 @@ const DOCS_URL = import.meta.env.VITE_DOCS_URL || undefined
 </script>
 
 <template>
-  <div class="app">
-    <AppHeader variant="dark">
-      <template #brand>
-        <h1 class="brand-title">{{ BRAND }}</h1>
-      </template>
-      <template #actions>
-        <ColorModeControl :model-value="mode" @update:model-value="set" />
-      </template>
-    </AppHeader>
+  <UiAppShell>
+    <template #header>
+      <AppHeader variant="dark">
+        <template #brand>{{ BRAND }}</template>
+        <template #actions>
+          <ColorModeControl :model-value="mode" @update:model-value="set" />
+        </template>
+      </AppHeader>
+    </template>
 
-    <main class="app-main">
-      <ContentHubView />
-    </main>
+    <h1 class="mw-visually-hidden">{{ BRAND }}</h1>
+    <ContentHubView />
 
-    <AppFooter :docs-url="DOCS_URL" />
-  </div>
+    <template #footer>
+      <AppFooter :docs-url="DOCS_URL">
+        <CopyrightLine symbol-variant="kopimi" organisation-name="Meddleware" rights-statement="jam" />
+      </AppFooter>
+    </template>
+  </UiAppShell>
 </template>
-
-<style scoped>
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-main {
-  flex: 1;
-}
-
-.brand-title {
-  font: inherit;
-  margin: 0;
-}
-</style>

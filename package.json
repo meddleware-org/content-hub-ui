@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/content-hub-ui",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Content hub admin console: roadmap, tasks, composer, publishing instances and budgets. Vue 3 SPA on @meddleware/ui; exports ContentHubView.",
   "author": "Meddleware <dev@meddleware.co.uk>",
   "license": "0BSD",
@@ -31,8 +31,9 @@
     "check:licenses": "node scripts/third-party-licenses.mjs --check",
     "check:csp": "node scripts/check-csp-inline.mjs @Dockerfile dist",
     "test:e2e": "playwright test",
-    "shots": "SHOTS=1 playwright test e2e/screens.spec.ts",
-    "check:dist": "node scripts/check-dist.mjs dist"
+    "shots": "SHOTS=1 playwright test",
+    "check:dist": "node scripts/check-dist.mjs dist",
+    "lhci": "npm run build && lhci autorun"
   },
   "exports": {
     ".": {
@@ -50,13 +51,14 @@
   },
   "dependencies": {
     "@meddleware/content-hub-client": "0.0.1",
-    "@meddleware/design-tokens": "^0.1.10",
-    "@meddleware/ui": "^0.1.34",
+    "@meddleware/design-tokens": "^0.1.12",
+    "@meddleware/ui": "^0.1.36",
+    "@meddleware/web-utils": "^0.0.1",
     "vue": "^3.5.43"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
-    "@meddleware/eslint-config": "^0.0.4",
+    "@lhci/cli": "^0.15.1",
+    "@meddleware/frontend-config": "^0.0.1",
     "@playwright/test": "~1.64.1",
     "@types/node": "~26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
@@ -84,8 +86,6 @@
     "node": "^22.18.0 || >=24.12.0"
   },
   "browserslist": [
-    "> 0.5%",
-    "last 2 versions",
-    "not dead"
+    "extends @meddleware/frontend-config/browserslist-config"
   ]
 }

@@ -48,7 +48,6 @@ export interface FakeReply {
 }
 
 // Request bodies are whatever the console sent; the fake reads them loosely, as a server would parse JSON.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Body = Record<string, any>
 
 const NOW = '2026-10-29T12:00:00Z'

@@ -3,22 +3,19 @@
 // queue it. The counts and bands are PREVIEWS from @meddleware/content-hub-client (the same arithmetic as the server,
 // pinned by the golden vectors); the server re-checks everything when the post is queued, and its answer is final.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { UiButton, UiNotice, UiPanel } from '@meddleware/ui'
+import { UiBadge, UiButton, UiEmptyState, UiNotice, UiPanel, usePager } from '@meddleware/ui'
+import { formatDateTime, formatUsd } from '@meddleware/web-utils'
 import { ApiError, describeError } from '../api/errors.js'
 import type { EnqueueTarget, Instance, Post, PostDetail, TargetProblem } from '../api/types.js'
-import ErrorNotice from '../components/ErrorNotice.vue'
-import PagerNav from '../components/PagerNav.vue'
-import RenderedText from '../components/RenderedText.js'
+import ComposerEditor from '../components/ComposerEditor.vue'
+import PostsList from '../components/PostsList.vue'
+import PreviewPanel from '../components/PreviewPanel.vue'
 import SegmentBar from '../components/SegmentBar.vue'
-import StatusBadge from '../components/StatusBadge.vue'
-import TextField from '../components/TextField.vue'
-import UsageMeter from '../components/UsageMeter.vue'
-import ZonedInput from '../components/ZonedInput.vue'
+import type { TargetChoice } from '../components/TargetPicker.vue'
 import { useConsole } from '../console.js'
-import { bands, normalise, preview, truncateWithLink, usage, type Override } from '../lib/composer.js'
+import { bands, normalise, preview, truncateWithLink, type Override } from '../lib/composer.js'
 import { clearDraft, isBlank, loadDraft, saveDraft } from '../lib/drafts.js'
-import { formatUsd } from '../lib/money.js'
-import { usePager } from '../lib/pager.js'
+import { statusLabel, statusTone } from '../lib/status.js'
 
 const emit = defineEmits<{ navigate: [section: string] }>()
 const c = useConsole()
@@ -77,13 +74,13 @@ watch(
 )
 
 // ── targets and their previews ──────────────────────────────────────────────────────────────────────────────
-const choices = computed(() => {
+const choices = computed<TargetChoice[]>(() => {
   const ref_ = c.reference.value
   if (!ref_) return []
   const defs = new Map(ref_.definitions.map((d) => [d.id, d]))
   return ref_.targets
     .map((t) => ({ target: t, def: defs.get(t.platform_definition_id) }))
-    .filter((x): x is { target: typeof x.target; def: NonNullable<typeof x.def> } => x.def !== undefined && x.target.enabled && x.def.enabled && x.def.posting_mode !== 'none')
+    .filter((x): x is TargetChoice => x.def !== undefined && x.target.enabled && x.def.enabled && x.def.posting_mode !== 'none')
 })
 
 const previews = computed(() =>
@@ -101,10 +98,6 @@ const overflowing = computed(() => previews.value.filter((p) => !p.fits))
 const canQueue = computed(
   () => !busy.value && title.value.trim() !== '' && previews.value.length > 0 && overflowing.value.length === 0 && !c.expired.value,
 )
-
-function toggle(id: number, on: boolean) {
-  selected.value = on ? [...new Set([...selected.value, id])] : selected.value.filter((x) => x !== id)
-}
 
 function setOverride(id: number, field: 'title' | 'body', value: string) {
   const key = String(id)
@@ -221,7 +214,7 @@ function fresh() {
 }
 
 // ── resuming a saved post ───────────────────────────────────────────────────────────────────────────────────
-const posts = usePager<Post>((cursor) => c.http.get('/posts', { cursor, limit: 10 }))
+const posts = usePager<Post>((cursor) => c.http.get('/posts', { cursor, limit: 10 }), describeError)
 
 async function open(id: number) {
   busy.value = true
@@ -249,47 +242,28 @@ const problemFor = (id: number) => problems.value.find((p) => p.target_id === id
 
 <template>
   <div class="composer">
-    <ErrorNotice :message="error" />
-    <UiNotice v-if="info" type="ok">{{ info }}</UiNotice>
+    <UiNotice v-if="error" type="error" :message="error" />
+    <UiNotice v-if="info" type="ok" :message="info" />
     <UiNotice v-if="restoredAt && !postId && !info">
-      Restored your unsent draft from {{ new Date(restoredAt).toLocaleString() }}.
+      Restored your unsent draft from {{ formatDateTime(restoredAt, c.zone.value) }}.
       <UiButton variant="ghost" @click="fresh">Discard it</UiButton>
     </UiNotice>
 
     <div class="composer-grid">
-      <section class="editor" aria-labelledby="composer-write">
-        <h3 id="composer-write">Write</h3>
-        <TextField id="post-title" v-model="title" label="Title" hint="Used by platforms that have titles; also names the post here." :maxlength="300" />
-        <TextField
-          id="post-body"
-          v-model="body"
-          label="Text"
-          :rows="10"
-          hint="Canonical format: paragraphs, **bold**, *emphasis*, `code`, [links](https://example.org), lists. One text, rendered for each platform."
-        />
-
-        <fieldset class="targets">
-          <legend>Publish to</legend>
-          <p v-if="!choices.length" class="muted">No enabled targets yet. Add one under Publishing.</p>
-          <label v-for="x in choices" :key="x.target.id" class="target-choice">
-            <input type="checkbox" :checked="selected.includes(x.target.id)" @change="toggle(x.target.id, ($event.target as HTMLInputElement).checked)" />
-            <span>
-              {{ x.target.name }} <span class="muted">— {{ x.def.name }}<template v-if="x.def.posting_mode === 'manual'"> · posted by hand</template><template v-if="x.target.is_sandbox"> · sandbox</template><template v-if="!x.target.live && x.def.posting_mode !== 'manual'"> · dry run only</template></span>
-            </span>
-          </label>
-        </fieldset>
-
-        <ZonedInput id="post-when" v-model="scheduledAt" label="Send at" hint="Leave empty to send as soon as the worker picks it up." />
-
-        <div class="actions">
-          <UiButton variant="secondary" :disabled="busy || title.trim() === '' || c.expired.value" @click="saveDraftOnServer">Save draft</UiButton>
-          <UiButton variant="primary" :disabled="!canQueue" @click="queue">Queue for {{ previews.length }} target{{ previews.length === 1 ? '' : 's' }}</UiButton>
-          <UiButton variant="ghost" @click="fresh">New post</UiButton>
-        </div>
-        <p v-if="overflowing.length" class="muted" role="status">
-          Too long for {{ overflowing.map((p) => p.target.name).join(', ') }}: shorten the text, or write a shorter version for that platform.
-        </p>
-      </section>
+      <ComposerEditor
+        v-model:title="title"
+        v-model:body="body"
+        v-model:selected="selected"
+        v-model:scheduled-at="scheduledAt"
+        :choices="choices"
+        :busy="busy"
+        :can-queue="canQueue"
+        :count="previews.length"
+        :overflowing="overflowing.map((p) => p.target.name)"
+        @save-draft="saveDraftOnServer"
+        @queue="queue"
+        @fresh="fresh"
+      />
 
       <section class="preview" aria-labelledby="composer-fit">
         <h3 id="composer-fit">How it fits</h3>
@@ -300,94 +274,34 @@ const problemFor = (id: number) => problems.value.find((p) => p.target_id === id
           <p v-if="totalCost > 0" class="cost">
             Estimated cost: <strong>{{ formatUsd(totalCost) }}</strong> (an estimate; paid platforms are capped and reserved when queued — see Budgets).
           </p>
-
-          <UiPanel v-for="p in previews" :key="p.target.id" :title="`${p.target.name} — ${p.def.name}`" :level="4" class="target-panel">
-            <UiNotice v-if="problemFor(p.target.id)" type="error">{{ problemFor(p.target.id) }}</UiNotice>
-            <UsageMeter
-              v-if="usage(p)"
-              label="Text"
-              :used="usage(p)!.used"
-              :limit="usage(p)!.limit"
-              :unit="usage(p)!.unit"
-            />
-            <UsageMeter
-              v-if="p.check && p.check.titleLimit !== null && p.check.titleCounted !== null"
-              label="Title"
-              :used="p.check.titleCounted"
-              :limit="p.check.titleLimit"
-            />
-            <UsageMeter v-if="p.check && p.check.byteLimit !== null" label="Bytes" :used="p.check.bytes" :limit="p.check.byteLimit" />
-            <p v-if="p.def.posting_mode === 'manual'" class="muted">Posted by hand: after queueing, an intent link and the text to copy appear under Publishing.</p>
-            <p v-if="p.costMicros > 0" class="muted">Cost estimate: {{ formatUsd(p.costMicros) }}<template v-if="p.hasUrl"> (includes the price of a post with a link)</template>.</p>
-
-            <h5 class="sub">As readers see it</h5>
-            <RenderedText :source="p.body" />
-            <details>
-              <summary>Exactly what would be sent ({{ p.markup.replace('_', ' ') }})</summary>
-              <pre class="payload">{{ p.payload }}</pre>
-            </details>
-
-            <details class="override">
-              <summary>Write something different for this platform<template v-if="p.overridden"> (in use)</template></summary>
-              <TextField
-                :id="`ov-title-${p.target.id}`"
-                label="Title for this platform"
-                :model-value="overrides[String(p.target.id)]?.title ?? ''"
-                :maxlength="300"
-                @update:model-value="setOverride(p.target.id, 'title', $event)"
-              />
-              <TextField
-                :id="`ov-body-${p.target.id}`"
-                label="Text for this platform"
-                hint="Replaces the shared text here only."
-                :rows="5"
-                :model-value="overrides[String(p.target.id)]?.body ?? ''"
-                @update:model-value="setOverride(p.target.id, 'body', $event)"
-              />
-              <TextField
-                :id="`ov-link-${p.target.id}`"
-                :model-value="linkOf(p.target.id)"
-                type="url"
-                label="Link to end a shortened text with"
-                placeholder="Paste the post link"
-                hint="Shorten with link cuts the text and ends it with an ellipsis and this link, then counts the result."
-                @update:model-value="setLink(p.target.id, $event)"
-              />
-              <div class="actions">
-                <UiButton variant="secondary" :disabled="p.fits || !p.limits" @click="truncate(p.target.id)">Shorten with link</UiButton>
-                <UiButton variant="ghost" :disabled="!p.overridden" @click="clearOverride(p.target.id)">Use the shared text</UiButton>
-              </div>
-            </details>
-          </UiPanel>
+          <PreviewPanel
+            v-for="p in previews"
+            :key="p.target.id"
+            :preview="p"
+            :problem="problemFor(p.target.id)"
+            :override="overrides[String(p.target.id)]"
+            :link="linkOf(p.target.id)"
+            @override="(field, value) => setOverride(p.target.id, field, value)"
+            @link="setLink(p.target.id, $event)"
+            @shorten="truncate(p.target.id)"
+            @clear="clearOverride(p.target.id)"
+          />
         </template>
-        <p v-else class="muted">Pick at least one target to see how the text fits.</p>
+        <UiEmptyState v-else>Pick at least one target to see how the text fits.</UiEmptyState>
       </section>
     </div>
 
     <UiPanel v-if="existing.length || queued.length" title="Instances of this post" :level="3">
-      <ul class="plain">
+      <ul>
         <li v-for="i in [...existing, ...queued.filter((q) => !existing.some((e) => e.id === q.id))]" :key="i.id">
-          #{{ i.id }} · {{ targetName(i.platform_target_id) }} · <StatusBadge :status="i.status" />
+          #{{ i.id }} · {{ targetName(i.platform_target_id) }} · <UiBadge :tone="statusTone(i.status)">{{ statusLabel(i.status) }}</UiBadge>
           <template v-if="i.last_error"> — {{ i.last_error }}</template>
         </li>
       </ul>
       <UiButton variant="secondary" @click="emit('navigate', 'instances')">Open Publishing</UiButton>
     </UiPanel>
 
-    <UiPanel title="Your posts" :level="3">
-      <ErrorNotice :message="posts.error.value" />
-      <ul class="plain posts">
-        <li v-for="p in posts.items.value" :key="p.id">
-          <span>
-            <strong>{{ p.title }}</strong>
-            <span class="muted"> — {{ p.status }}, revision {{ p.revision }}</span>
-          </span>
-          <UiButton variant="ghost" :disabled="busy" @click="open(p.id)">Open</UiButton>
-        </li>
-        <li v-if="!posts.items.value.length && !posts.loading.value" class="muted">No posts yet.</li>
-      </ul>
-      <PagerNav :index="posts.index.value" :has-next="posts.hasNext.value" :loading="posts.loading.value" label="Posts pages" @prev="posts.prev()" @next="posts.next()" />
-    </UiPanel>
+    <PostsList :posts="posts" :busy="busy" @open="open" />
   </div>
 </template>
 
@@ -400,29 +314,8 @@ const problemFor = (id: number) => problems.value.find((p) => p.target_id === id
 
 .composer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   gap: var(--space-md);
-}
-
-.targets {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin: var(--space-sm) 0;
-  padding: var(--space-xs) var(--space-sm);
-}
-
-.target-choice {
-  display: flex;
-  gap: var(--space-xs);
-  align-items: baseline;
-  padding: var(--space-3xs) 0;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin: var(--space-sm) 0;
 }
 
 .muted {
@@ -432,37 +325,5 @@ const problemFor = (id: number) => problems.value.find((p) => p.target_id === id
 
 .cost {
   margin: var(--space-xs) 0;
-}
-
-.sub {
-  margin: var(--space-xs) 0 var(--space-3xs);
-}
-
-.target-panel {
-  margin-top: var(--space-sm);
-}
-
-.payload {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs);
-}
-
-.plain {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.posts li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-xs);
-  align-items: center;
-  padding: var(--space-3xs) 0;
-  border-bottom: 1px solid var(--border);
 }
 </style>

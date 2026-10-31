@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4 — 2026-10-31
+
+- Shared fields, tables and meters from ui, split views
+
 ## 0.0.3 — 2026-10-30
 
 - Dependency updates (minor and patch groups) and workflow action bumps. No source change.

@@ -5,8 +5,7 @@
 import { inject, provide, ref, type InjectionKey, type Ref } from 'vue'
 import { createHttp, type Http } from './api/http.js'
 import type { Me, Page, PlatformDefinition, PlatformTarget } from './api/types.js'
-import { safeStorage } from './lib/drafts.js'
-import { browserZone, isZone } from './lib/time.js'
+import { browserZone, isZone, safeStorage } from '@meddleware/web-utils'
 
 export interface Reference {
   definitions: PlatformDefinition[]

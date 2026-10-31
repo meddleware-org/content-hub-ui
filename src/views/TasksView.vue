@@ -1,21 +1,14 @@
 <script setup lang="ts">
 // Tasks: a filtered, paginated list, and for one task its dependencies, platforms, links, and ONLY the status changes
 // the server offers right now (the state machine plus unfinished dependencies). The server decides every move.
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { TASK_STATUS_VALUES, TASK_TRANSITIONS, TASK_TYPE_VALUES } from '@meddleware/content-hub-client'
-import { UiButton, UiDataTable, UiNotice, UiPanel, safeHref } from '@meddleware/ui'
+import { UiBadge, UiButton, UiCheckField, UiDataTable, UiEmptyState, UiNotice, UiPager, UiPanel, UiSelectField, UiTextField, usePager } from '@meddleware/ui'
+import { formatDateTime, humanize, safeHref } from '@meddleware/web-utils'
 import { describeError } from '../api/errors.js'
 import type { Task, TaskDetail } from '../api/types.js'
-import CheckField from '../components/CheckField.vue'
-import ErrorNotice from '../components/ErrorNotice.vue'
-import PagerNav from '../components/PagerNav.vue'
-import SelectField from '../components/SelectField.vue'
-import StatusBadge from '../components/StatusBadge.vue'
-import TableScroll from '../components/TableScroll.vue'
-import TextField from '../components/TextField.vue'
 import { useConsole } from '../console.js'
-import { usePager } from '../lib/pager.js'
-import { formatDateTime } from '../lib/time.js'
+import { statusLabel, statusTone } from '../lib/status.js'
 
 const c = useConsole()
 const error = ref<string | null>(null)
@@ -30,8 +23,10 @@ const tasks = usePager<Task>((cursor) =>
     entity_gated: filter.gated,
     review_due: filter.reviewDue ? true : undefined,
   }),
+  describeError,
 )
 const detail = ref<TaskDetail | null>(null)
+const detailPanel = ref<InstanceType<typeof UiPanel> | null>(null)
 const blockedReason = ref('')
 const askBlocked = ref(false)
 const link = reactive({ kind: 'external', post: '', instance: '', url: '', label: '' })
@@ -48,6 +43,9 @@ async function open(id: number) {
   askBlocked.value = false
   try {
     detail.value = await c.http.get<TaskDetail>(`/tasks/${id}`)
+    // Opening a task moves the keyboard to it (it is below the list, out of sight for a screen reader and a keyboard).
+    await nextTick()
+    ;(detailPanel.value?.$el as HTMLElement | undefined)?.focus()
   } catch (e) {
     error.value = describeError(e)
   }
@@ -68,7 +66,7 @@ async function move(to: string) {
     })
     askBlocked.value = false
     blockedReason.value = ''
-    notice.value = `Moved to ${to.replace('_', ' ')}.`
+    notice.value = `Moved to ${humanize(to)}.`
     void tasks.reload()
   } catch (e) {
     error.value = describeError(e)
@@ -122,51 +120,55 @@ const held = computed(() => {
 })
 const platformLabel = (p: { platform_code: string; platform_target_id: number | null }) =>
   p.platform_target_id === null ? p.platform_code : `${p.platform_code} → ${c.reference.value?.targets.find((t) => t.id === p.platform_target_id)?.name ?? `target #${p.platform_target_id}`}`
+
+const taskType = (t: string) => humanize(t).toLowerCase()
+const STATUS_OPTIONS = TASK_STATUS_VALUES.map((s) => [s, humanize(s)] as const)
+const TYPE_OPTIONS = TASK_TYPE_VALUES.map((s) => [s, taskType(s)] as const)
+const GATED_OPTIONS = [['true', 'Yes'], ['false', 'No']] as const
+const LINK_KINDS = [['external', 'A web page'], ['post', 'A post'], ['platform_instance', 'A publishing instance']] as const
 </script>
 
 <template>
   <div class="tasks">
-    <ErrorNotice :message="error" />
-    <UiNotice v-if="notice" type="ok">{{ notice }}</UiNotice>
+    <UiNotice v-if="error" type="error" :message="error" />
+    <UiNotice v-if="notice" type="ok" :message="notice" />
 
     <UiPanel title="Tasks" :level="3">
       <div class="filters">
-        <SelectField id="tk-status" v-model="filter.status" label="Status" :options="TASK_STATUS_VALUES.map((s) => [s, s.replace('_', ' ')] as const)" placeholder="Any status" @update:model-value="tasks.reset()" />
-        <SelectField id="tk-type" v-model="filter.type" label="Type" :options="TASK_TYPE_VALUES.map((s) => [s, s.replace(/_/g, ' ').toLowerCase()] as const)" placeholder="Any type" @update:model-value="tasks.reset()" />
-        <SelectField id="tk-gated" v-model="filter.gated" label="Needs the organisation" :options="[['true', 'Yes'], ['false', 'No']]" placeholder="Either" @update:model-value="tasks.reset()" />
-        <CheckField v-model="filter.reviewDue" label="Review due now" @update:model-value="tasks.reset()" />
+        <UiSelectField id="tk-status" v-model="filter.status" label="Status" :options="STATUS_OPTIONS" placeholder="Any status" @update:model-value="tasks.reset()" />
+        <UiSelectField id="tk-type" v-model="filter.type" label="Type" :options="TYPE_OPTIONS" placeholder="Any type" @update:model-value="tasks.reset()" />
+        <UiSelectField id="tk-gated" v-model="filter.gated" label="Needs the organisation" :options="GATED_OPTIONS" placeholder="Either" @update:model-value="tasks.reset()" />
+        <UiCheckField v-model="filter.reviewDue" label="Review due now" @update:model-value="tasks.reset()" />
       </div>
-      <ErrorNotice :message="tasks.error.value" />
-      <TableScroll label="Tasks">
-      <UiDataTable empty="No tasks match.">
+      <UiNotice v-if="tasks.error.value" type="error" :message="tasks.error.value" />
+      <UiDataTable caption="Tasks" empty="No tasks match." :rows="tasks.items.value.length">
         <template #head>
-            <th scope="col">Task</th>
-            <th scope="col">Type</th>
-            <th scope="col">Status</th>
-            <th scope="col">Next review</th>
-            <th scope="col"><span class="sr-only">Actions</span></th>
+          <th scope="col">Task</th>
+          <th scope="col">Type</th>
+          <th scope="col">Status</th>
+          <th scope="col">Next review</th>
+          <th scope="col"><span class="mw-visually-hidden">Actions</span></th>
         </template>
         <tr v-for="t in tasks.items.value" :key="t.id">
           <th scope="row">
             {{ t.title }}
-            <StatusBadge v-if="t.entity_gated" label="needs the organisation" tone="wait" />
+            <UiBadge v-if="t.entity_gated" tone="warn">needs the organisation</UiBadge>
             <br /><span class="muted">{{ t.key }}</span>
           </th>
-          <td>{{ t.task_type.replace(/_/g, ' ').toLowerCase() }}</td>
-          <td><StatusBadge :status="t.status" /></td>
-          <td>{{ formatDateTime(t.next_review_at, c.zone.value) }}</td>
+          <td>{{ taskType(t.task_type) }}</td>
+          <td><UiBadge :tone="statusTone(t.status)">{{ statusLabel(t.status) }}</UiBadge></td>
+          <td><time :datetime="t.next_review_at ?? undefined">{{ formatDateTime(t.next_review_at, c.zone.value) }}</time></td>
           <td><UiButton variant="ghost" @click="open(t.id)">Details</UiButton></td>
         </tr>
       </UiDataTable>
-      </TableScroll>
-      <PagerNav :index="tasks.index.value" :has-next="tasks.hasNext.value" :loading="tasks.loading.value" label="Task pages" @prev="tasks.prev()" @next="tasks.next()" />
+      <UiPager :index="tasks.index.value" :has-next="tasks.hasNext.value" :loading="tasks.loading.value" label="Task pages" prev-label="Newer" next-label="Older" @prev="tasks.prev()" @next="tasks.next()" />
     </UiPanel>
 
-    <UiPanel v-if="detail" :title="detail.task.title" :level="3">
+    <UiPanel v-if="detail" ref="detailPanel" tabindex="-1" :title="detail.task.title" :level="3">
       <p>
-        <StatusBadge :status="detail.task.status" />
-        <StatusBadge v-if="detail.task.entity_gated" label="needs the organisation" tone="wait" />
-        <span class="muted"> {{ detail.task.key }} · {{ detail.task.task_type.replace(/_/g, ' ').toLowerCase() }}</span>
+        <UiBadge :tone="statusTone(detail.task.status)">{{ statusLabel(detail.task.status) }}</UiBadge>
+        <UiBadge v-if="detail.task.entity_gated" tone="warn">needs the organisation</UiBadge>
+        <span class="muted"> {{ detail.task.key }} · {{ taskType(detail.task.task_type) }}</span>
       </p>
       <p v-if="detail.task.description">{{ detail.task.description }}</p>
       <UiNotice v-if="detail.task.status === 'blocked'" type="error"><strong>Blocked:</strong> {{ detail.task.blocked_reason }}</UiNotice>
@@ -177,42 +179,42 @@ const platformLabel = (p: { platform_code: string; platform_target_id: number | 
 
       <h4>Change status</h4>
       <div class="moves">
-        <UiButton v-for="m in detail.allowed_moves" :key="m" variant="secondary" :disabled="busy || c.expired.value" @click="move(m)">Move to {{ m.replace('_', ' ') }}</UiButton>
-        <span v-if="!detail.allowed_moves.length" class="muted">No status change is possible from {{ detail.task.status.replace('_', ' ') }}.</span>
+        <UiButton v-for="m in detail.allowed_moves" :key="m" variant="secondary" :disabled="busy || c.expired.value" @click="move(m)">Move to {{ humanize(m) }}</UiButton>
+        <span v-if="!detail.allowed_moves.length" class="muted">No status change is possible from {{ humanize(detail.task.status) }}.</span>
       </div>
       <p v-if="held.length" class="muted">Not offered right now: {{ held.join(', ') }} (unfinished dependencies or the rules).</p>
       <div v-if="askBlocked" class="reason">
-        <TextField id="tk-reason" v-model="blockedReason" label="Why is it blocked?" hint="Required; shown to everyone who opens the task." :maxlength="1000" />
+        <UiTextField id="tk-reason" v-model="blockedReason" label="Why is it blocked?" hint="Required; shown to everyone who opens the task." :maxlength="1000" />
         <UiButton variant="primary" :disabled="busy || blockedReason.trim() === ''" @click="move('blocked')">Block the task</UiButton>
         <UiButton variant="ghost" @click="askBlocked = false">Cancel</UiButton>
       </div>
 
       <h4>Depends on</h4>
-      <p v-if="!detail.depends_on.length" class="muted">Nothing.</p>
-      <ul v-else class="plain"><li v-for="d in detail.depends_on" :key="d">task #{{ d }}</li></ul>
+      <UiEmptyState v-if="!detail.depends_on.length">Nothing.</UiEmptyState>
+      <ul v-else><li v-for="d in detail.depends_on" :key="d">task #{{ d }}</li></ul>
 
       <h4>Platforms</h4>
-      <p v-if="!detail.platforms.length" class="muted">None.</p>
-      <ul v-else class="plain"><li v-for="p in detail.platforms" :key="p.id">{{ platformLabel(p) }}</li></ul>
+      <UiEmptyState v-if="!detail.platforms.length">None.</UiEmptyState>
+      <ul v-else><li v-for="p in detail.platforms" :key="p.id">{{ platformLabel(p) }}</li></ul>
 
       <h4>Links</h4>
-      <ul v-if="detail.links.length" class="plain">
+      <ul v-if="detail.links.length">
         <li v-for="l in detail.links" :key="l.id">
           <template v-if="l.link_kind === 'external'"><a :href="safeHref(l.url)" rel="noopener noreferrer" target="_blank">{{ l.label || l.url }}</a></template>
           <template v-else-if="l.link_kind === 'post'">post #{{ l.post_id }}</template>
           <template v-else>publishing instance #{{ l.platform_instance_id }}</template>
-          <UiButton variant="ghost" :disabled="busy || c.expired.value" @click="detach(l.id)">Detach</UiButton>
+          <UiButton variant="ghost" size="sm" :disabled="busy || c.expired.value" @click="detach(l.id)">Detach</UiButton>
         </li>
       </ul>
-      <p v-else class="muted">No links.</p>
+      <UiEmptyState v-else>No links.</UiEmptyState>
 
       <h5>Attach a link</h5>
-      <SelectField id="lk-kind" v-model="link.kind" label="Kind" :options="[['external', 'A web page'], ['post', 'A post'], ['platform_instance', 'A publishing instance']]" />
-      <TextField v-if="link.kind === 'post'" id="lk-post" v-model="link.post" label="Post number" inputmode="numeric" />
-      <TextField v-else-if="link.kind === 'platform_instance'" id="lk-inst" v-model="link.instance" label="Instance number" inputmode="numeric" />
+      <UiSelectField id="lk-kind" v-model="link.kind" label="Kind" :options="LINK_KINDS" />
+      <UiTextField v-if="link.kind === 'post'" id="lk-post" v-model="link.post" label="Post number" inputmode="numeric" />
+      <UiTextField v-else-if="link.kind === 'platform_instance'" id="lk-inst" v-model="link.instance" label="Instance number" inputmode="numeric" />
       <template v-else>
-        <TextField id="lk-url" v-model="link.url" type="url" label="Address (https)" />
-        <TextField id="lk-label" v-model="link.label" label="Label" :maxlength="200" />
+        <UiTextField id="lk-url" v-model="link.url" type="url" label="Address (https)" />
+        <UiTextField id="lk-label" v-model="link.label" label="Label" :maxlength="200" />
       </template>
       <UiButton variant="secondary" :disabled="busy || c.expired.value" @click="addLink">Attach</UiButton>
     </UiPanel>
@@ -235,22 +237,8 @@ const platformLabel = (p: { platform_code: string; platform_target_id: number | 
   align-items: end;
 }
 
-.plain {
-  list-style: none;
-  padding: 0;
-}
-
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 </style>

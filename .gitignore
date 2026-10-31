@@ -13,3 +13,6 @@ playwright-report/
 # Local test reporter output
 .vitest/
 coverage/
+
+# Lighthouse CI
+.lighthouseci/

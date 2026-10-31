@@ -18,7 +18,11 @@ export interface Harness {
   reload: ReturnType<typeof vi.fn>
 }
 
+/** The sections load when first opened; loading them once first keeps every test's first open as fast as its second. */
+const sections = Promise.all(Object.values(import.meta.glob('../../src/views/*.vue')).map((load) => load()))
+
 export async function mountConsole(api = new FakeApi()): Promise<Harness> {
+  await sections
   const reload = vi.fn()
   const w = mount(ContentHubView, { props: { fetch: api.fetch as typeof fetch, reload }, attachTo: document.body })
   await settle()
@@ -57,7 +61,7 @@ export const panelText = (h: Harness): string => h.w.find('.content-hub-panel').
 
 /** Choose a radio option of a segmented control by its label. */
 export async function segment(h: Harness, label: string): Promise<void> {
-  const l = h.w.findAll('label.mode-item').find((x) => x.text().startsWith(label))
+  const l = h.w.findAll('.mw-seg__item').find((x) => x.text().startsWith(label))
   if (!l) throw new Error(`no option "${label}"`)
   await l.find('input').setValue(true)
   await settle()

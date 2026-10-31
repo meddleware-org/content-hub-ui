@@ -1,24 +1,6 @@
-import { defineConfig, devices } from '@playwright/test'
+import { definePlaywrightConfig } from '@meddleware/frontend-config/playwright'
 
-// Browser tests of the BUILT console against a mocked admin API (tests/support/fake-api.ts behind `page.route`):
-// `npm run test:e2e` builds, serves dist with `vite preview` under the production CSP, and drives Chromium. Every
-// request that leaves localhost is refused, so the run needs no network. CI installs Chromium first.
-const PORT = 4291
-
-export default defineConfig({
-  testDir: './e2e',
-  // The screenshot capture (npm run shots) is for looking, not asserting: only run it when asked.
-  testIgnore: process.env.SHOTS ? [] : ['**/screens.spec.ts'],
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  reporter: 'list',
-  use: { baseURL: `http://localhost:${PORT}`, viewport: { width: 1280, height: 900 } },
-  webServer: {
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-  },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-})
+// Browser tests of the BUILT app (`vite preview` of dist): Chromium locally, all five browser projects in CI (E2E_BROWSERS=all to run
+// them locally). Every request that leaves localhost is refused in the specs, so runs need no network. The screenshot capture
+// (`npm run shots`) is for looking, not asserting.
+export default definePlaywrightConfig({ port: 4286 })

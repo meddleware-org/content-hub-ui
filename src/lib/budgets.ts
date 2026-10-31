@@ -3,7 +3,20 @@
 // only explain them.
 
 import type { Budgets, PlatformDefinition, PlatformTarget, SpendCap } from '../api/types.js'
-import { formatUsd, level } from './money.js'
+import { formatUsd } from '@meddleware/web-utils'
+
+/** The share of a cap used, as a whole percent (a cap of 0 with any use is 100). */
+export function percent(used: number, cap: number): number {
+  if (used <= 0) return 0
+  if (cap <= 0) return 100
+  return Math.min(100, Math.floor((used * 100) / cap))
+}
+
+/** The alert level the service reports at: 0, 50, 80 or 100. */
+export function level(used: number, cap: number): 0 | 50 | 80 | 100 {
+  const p = percent(used, cap)
+  return p >= 100 ? 100 : p >= 80 ? 80 : p >= 50 ? 50 : 0
+}
 
 export type CapKey = string
 

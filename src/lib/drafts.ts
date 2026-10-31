@@ -3,6 +3,8 @@
 // found there is untrusted (another tab, an older version, tampering): reads validate the shape and drop what does
 // not fit; nothing here throws.
 
+import { isObj, safeStorage, str } from '@meddleware/web-utils'
+
 export interface Draft {
   title: string
   body: string
@@ -16,9 +18,6 @@ export interface Draft {
 
 export const DRAFT_KEY = 'content-hub:composer-draft:v1'
 const MAX_TEXT = 100_000
-
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
-const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.length <= max ? v : null)
 
 export function parseDraft(raw: string | null): Draft | null {
   if (!raw) return null
@@ -75,11 +74,3 @@ export function clearDraft(storage: Pick<Storage, 'removeItem'> | null = safeSto
 
 /** Whether a draft holds anything worth keeping. */
 export const isBlank = (d: Pick<Draft, 'title' | 'body'>): boolean => d.title.trim() === '' && d.body.trim() === ''
-
-export function safeStorage(): Storage | null {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage
-  } catch {
-    return null
-  }
-}

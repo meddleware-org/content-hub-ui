@@ -2,36 +2,29 @@
 // The admin console. Rendered standalone by App.vue and exported for embedding. It talks only to the same-origin admin
 // API; the session is held by the access gateway in front of it, never by this code. When a request finds the
 // session ended, a banner offers to sign in again; unsent composer drafts live in this browser and survive it.
-import { computed, onMounted, ref, type Component } from 'vue'
-import { AppTabNav, UiTabPanel, safePath, type AppTab } from '@meddleware/ui'
-import SelectField from './components/SelectField.vue'
+import { computed, defineAsyncComponent, onMounted, ref, type Component } from 'vue'
+import { AppTabNav, UiNotice, UiSelectField, UiTabPanel, type AppTab } from '@meddleware/ui'
+import { browserZone, safePath } from '@meddleware/web-utils'
 import SessionBanner from './components/SessionBanner.vue'
 import { SIGN_OUT_PATH, createConsole, provideConsole, type ConsoleOptions } from './console.js'
 import { describeError } from './api/errors.js'
 import type { Me } from './api/types.js'
 import { SECTIONS } from './sections.js'
-import BudgetsView from './views/BudgetsView.vue'
-import ComposerView from './views/ComposerView.vue'
-import DashboardView from './views/DashboardView.vue'
-import PublishingView from './views/PublishingView.vue'
-import RoadmapView from './views/RoadmapView.vue'
-import ScheduleView from './views/ScheduleView.vue'
-import TasksView from './views/TasksView.vue'
-import { browserZone } from './lib/time.js'
 
 // `fetch` and `reload` exist so hosts and tests can substitute them; the defaults are the browser's.
 const props = defineProps<Partial<ConsoleOptions>>()
 const c = createConsole({ fetch: props.fetch, reload: props.reload })
 provideConsole(c)
 
+// Each section loads when it is first opened.
 const VIEWS: Record<string, Component> = {
-  dashboard: DashboardView,
-  roadmap: RoadmapView,
-  tasks: TasksView,
-  composer: ComposerView,
-  instances: PublishingView,
-  schedule: ScheduleView,
-  budgets: BudgetsView,
+  dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
+  roadmap: defineAsyncComponent(() => import('./views/RoadmapView.vue')),
+  tasks: defineAsyncComponent(() => import('./views/TasksView.vue')),
+  composer: defineAsyncComponent(() => import('./views/ComposerView.vue')),
+  instances: defineAsyncComponent(() => import('./views/PublishingView.vue')),
+  schedule: defineAsyncComponent(() => import('./views/ScheduleView.vue')),
+  budgets: defineAsyncComponent(() => import('./views/BudgetsView.vue')),
 }
 
 const TABS: AppTab[] = SECTIONS.map((s) => ({ id: s.id, label: s.label }))
@@ -61,7 +54,7 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
 <template>
   <div class="content-hub-view">
     <SessionBanner />
-    <p v-if="loadError && !c.expired.value" class="load-error" role="alert">{{ loadError }}</p>
+    <UiNotice v-if="loadError && !c.expired.value" type="error" :message="loadError" />
 
     <div class="who">
       <p class="who-name">
@@ -69,7 +62,7 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
         <template v-else>Checking who you are…</template>
         <template v-if="safePath(SIGN_OUT_PATH)"> · <a :href="safePath(SIGN_OUT_PATH)">Sign out</a></template>
       </p>
-      <SelectField id="console-zone" :model-value="c.zone.value" label="Show times in" :options="zoneOptions" @update:model-value="c.setZone($event)" />
+      <UiSelectField id="console-zone" :model-value="c.zone.value" label="Show times in" :options="zoneOptions" @update:model-value="c.setZone($event)" />
     </div>
 
     <AppTabNav v-model="activeTab" :tabs="TABS" id-prefix="content-hub" variant="raised" aria-label="Content hub sections" />
@@ -101,10 +94,6 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
 
 .who-name {
   margin: 0;
-}
-
-.load-error {
-  color: var(--danger);
 }
 
 .section-title {

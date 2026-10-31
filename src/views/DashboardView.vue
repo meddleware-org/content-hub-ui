@@ -3,16 +3,13 @@
 // number comes from the server.
 import { computed, onMounted, ref } from 'vue'
 import { INSTANCE_STATUS_VALUES, ITEM_STATUS_VALUES, POST_STATUS_VALUES, TASK_STATUS_VALUES } from '@meddleware/content-hub-client'
-import { UiButton, UiPanel, UiStatGrid, UiStatRow } from '@meddleware/ui'
+import { UiBadge, UiButton, UiEmptyState, UiMeter, UiNotice, UiPanel, UiStatGrid, UiStatRow } from '@meddleware/ui'
+import { formatDateTime, formatUsd, humanize } from '@meddleware/web-utils'
 import { describeError } from '../api/errors.js'
 import type { Budgets, CountBy, Schedule, Stats } from '../api/types.js'
-import ErrorNotice from '../components/ErrorNotice.vue'
-import StatusBadge from '../components/StatusBadge.vue'
-import UsageMeter from '../components/UsageMeter.vue'
 import { useConsole } from '../console.js'
 import { LEVEL_TEXT, rows } from '../lib/budgets.js'
-import { formatUsd } from '../lib/money.js'
-import { formatDateTime } from '../lib/time.js'
+import { statusLabel, statusTone } from '../lib/status.js'
 
 const emit = defineEmits<{ navigate: [section: string] }>()
 const c = useConsole()
@@ -69,45 +66,48 @@ const targetName = (id: number) => c.reference.value?.targets.find((t) => t.id =
 
 <template>
   <div class="dashboard">
-    <div class="bar">
-      <p class="muted">Counts are read from the server when this page opens.</p>
+    <p class="bar">
+      <span class="muted">Counts are read from the server when this page opens.</span>
       <UiButton variant="secondary" :disabled="loading" @click="load">Refresh</UiButton>
-    </div>
-    <ErrorNotice :message="error" />
+    </p>
+    <UiNotice v-if="error" type="error" :message="error" />
 
     <div class="grid">
       <UiPanel v-for="g in groups" :key="g.title" :title="g.title" :level="3">
         <UiStatGrid v-if="g.rows.length">
-          <UiStatRow v-for="[k, n] in g.rows" :key="k" :label="k.replace(/_/g, ' ')">{{ n }}</UiStatRow>
+          <UiStatRow v-for="[k, n] in g.rows" :key="k" :label="humanize(k)">{{ n }}</UiStatRow>
         </UiStatGrid>
-        <p v-else class="muted">None yet.</p>
+        <UiEmptyState v-else>None yet.</UiEmptyState>
       </UiPanel>
     </div>
 
     <UiPanel title="Next 14 days" :level="3">
-      <h4 class="sub">Scheduled to send</h4>
-      <ul v-if="schedule?.instances.length" class="plain">
+      <h4>Scheduled to send</h4>
+      <ul v-if="schedule?.instances.length">
         <li v-for="i in schedule.instances.slice(0, 8)" :key="i.id">
-          {{ formatDateTime(i.next_attempt_at ?? i.scheduled_at, c.zone.value) }} · {{ targetName(i.platform_target_id) }} · <StatusBadge :status="i.status" />
+          <time :datetime="i.next_attempt_at ?? i.scheduled_at ?? undefined">{{ formatDateTime(i.next_attempt_at ?? i.scheduled_at, c.zone.value) }}</time> · {{ targetName(i.platform_target_id) }} ·
+          <UiBadge :tone="statusTone(i.status)">{{ statusLabel(i.status) }}</UiBadge>
         </li>
       </ul>
-      <p v-else class="muted">Nothing is scheduled.</p>
-      <h4 class="sub">Reviews due ({{ stats?.reviews_due ?? 0 }} now)</h4>
-      <ul v-if="schedule?.reviews_due.length" class="plain">
-        <li v-for="t in schedule.reviews_due.slice(0, 8)" :key="t.id">{{ formatDateTime(t.next_review_at, c.zone.value) }} · {{ t.title }}</li>
+      <UiEmptyState v-else>Nothing is scheduled.</UiEmptyState>
+      <h4>Reviews due ({{ stats?.reviews_due ?? 0 }} now)</h4>
+      <ul v-if="schedule?.reviews_due.length">
+        <li v-for="t in schedule.reviews_due.slice(0, 8)" :key="t.id">
+          <time :datetime="t.next_review_at ?? undefined">{{ formatDateTime(t.next_review_at, c.zone.value) }}</time> · {{ t.title }}
+        </li>
       </ul>
-      <p v-else class="muted">No reviews are due.</p>
+      <UiEmptyState v-else>No reviews are due.</UiEmptyState>
       <UiButton variant="ghost" @click="emit('navigate', 'schedule')">Open the schedule</UiButton>
     </UiPanel>
 
     <UiPanel title="Spend against caps this month" :level="3">
-      <ul v-if="spend.length" class="plain">
+      <ul v-if="spend.length">
         <li v-for="r in spend" :key="r.key">
-          <UsageMeter :label="r.label" :used="r.used" :limit="r.cap" :format="formatUsd" />
+          <UiMeter :label="r.label" :used="r.used" :limit="r.cap" :format="formatUsd" />
           <span class="muted"> {{ LEVEL_TEXT[r.level] }}</span>
         </li>
       </ul>
-      <p v-else class="muted">No money has been spent or reserved this month, and every paid path is capped at zero until you raise it.</p>
+      <UiEmptyState v-else>No money has been spent or reserved this month, and every paid path is capped at zero until you raise it.</UiEmptyState>
       <UiButton variant="ghost" @click="emit('navigate', 'budgets')">Open budgets</UiButton>
     </UiPanel>
   </div>
@@ -125,22 +125,13 @@ const targetName = (id: number) => c.reference.value?.targets.find((t) => t.id =
   justify-content: space-between;
   align-items: center;
   gap: var(--space-sm);
+  margin: 0;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--space-sm);
-}
-
-.sub {
-  margin: var(--space-xs) 0 var(--space-3xs);
-}
-
-.plain {
-  list-style: none;
-  padding: 0;
-  margin: 0;
 }
 
 .muted {

@@ -1,34 +1,9 @@
 // The built console in Chromium against the mocked admin API. What these prove that the component tests cannot:
 // the real browser's fetch semantics (a redirect to the sign-in page is an opaque redirect), a reload with the
 // session back, drafts surviving it, the production CSP, and the whole flows end to end.
-import { expect, test, type Page } from '@playwright/test'
-import { FakeApi } from '../tests/support/fake-api.js'
+import { expect, test } from '@playwright/test'
+import { open, tab } from './open.js'
 
-/** Wire a page to a fake API; refuse anything that leaves localhost; collect page errors and CSP violations. */
-async function open(page: Page, api = new FakeApi(), mode: 'html' | 'redirect' = 'redirect') {
-  const problems: string[] = []
-  page.on('pageerror', (e) => problems.push(`error: ${e.message}`))
-  page.on('console', (m) => {
-    if (/content security policy|refused to/i.test(m.text())) problems.push(`csp: ${m.text()}`)
-  })
-  await page.route(/^https?:\/\/(?!(localhost|127\.0\.0\.1)[:/])/, (route) => route.abort())
-  await page.route('**/api/v1/**', async (route) => {
-    const req = route.request()
-    const u = new URL(req.url())
-    const r = api.respond(req.method(), u.pathname + u.search, await req.allHeaders(), req.postData() ?? undefined)
-    if (api.expired && mode === 'redirect') {
-      // What the access gateway does to a browser whose session ended: send it to the sign-in page elsewhere.
-      return route.fulfill({ status: 302, headers: { location: 'https://team.cloudflareaccess.com/cdn-cgi/access/login/hub' } })
-    }
-    if (r.html !== undefined) return route.fulfill({ status: r.status, contentType: 'text/html', body: r.html })
-    return route.fulfill({ status: r.status, contentType: 'application/json', body: r.status === 204 ? '' : JSON.stringify(r.json ?? null) })
-  })
-  await page.goto('/')
-  await expect(page.getByText('Signed in as op@example.org')).toBeVisible()
-  return { api, problems }
-}
-
-const tab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true })
 const LONG = 'word '.repeat(80) // 400 characters
 
 test('every section opens without a page error, under the production CSP', async ({ page }) => {
@@ -44,7 +19,7 @@ test('a session that ends mid-compose keeps the draft, and signing in again rest
   const { api, problems } = await open(page)
   await tab(page, 'Composer').click()
   await page.getByLabel('Title', { exact: true }).fill('Launch day')
-  await page.getByLabel('Text', { exact: true }).fill('Something I do not want to lose')
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill('Something I do not want to lose')
   await page.getByRole('checkbox', { name: /^mastodon test/ }).check()
 
   api.expire() // the access gateway now redirects every request to its sign-in page
@@ -57,7 +32,7 @@ test('a session that ends mid-compose keeps the draft, and signing in again rest
   await expect(page.getByText('Your session has expired.')).toHaveCount(0)
   await tab(page, 'Composer').click()
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Launch day')
-  await expect(page.getByLabel('Text', { exact: true })).toHaveValue('Something I do not want to lose')
+  await expect(page.getByRole('textbox', { name: 'Text', exact: true })).toHaveValue('Something I do not want to lose')
   await expect(page.getByText('Restored your unsent draft')).toBeVisible()
   expect(problems).toEqual([])
 })
@@ -66,7 +41,7 @@ test('composing across three platforms: overflow is shown in words, blocks queue
   const { api, problems } = await open(page)
   await tab(page, 'Composer').click()
   await page.getByLabel('Title', { exact: true }).fill('Launch')
-  await page.getByLabel('Text', { exact: true }).fill(LONG)
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill(LONG)
   for (const t of ['mastodon test', 'bluesky test', 'brand on X']) await page.getByRole('checkbox', { name: new RegExp(`^${t}`) }).check()
 
   await expect(page.getByText('400 / 500 characters — close to the limit')).toBeVisible()
@@ -129,7 +104,7 @@ test('the public roadmap preview is the document the public site serves', async 
   await page.getByText('Public: people', { exact: false }).click()
   await expect(page.getByText('What visitors get')).toBeVisible()
   await page.getByText('The exact JSON document').click()
-  const json = await page.locator('pre.json').innerText()
+  const json = await page.locator('details pre').innerText()
   expect(json).toContain('"name"')
   expect(json).not.toContain('internal')
   expect(problems).toEqual([])
@@ -139,7 +114,7 @@ test('a hostile post is shown as text', async ({ page }) => {
   const { problems } = await open(page)
   await tab(page, 'Composer').click()
   await page.getByLabel('Title', { exact: true }).fill('x')
-  await page.getByLabel('Text', { exact: true }).fill('<img src=x onerror="window.pwned=1"> [go](javascript:window.pwned=2) **ok**')
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill('<img src=x onerror="window.pwned=1"> [go](javascript:window.pwned=2) **ok**')
   await page.getByRole('checkbox', { name: /^mastodon test/ }).check()
   await expect(page.locator('.rendered-text strong')).toHaveText('ok')
   expect(await page.evaluate(() => (window as unknown as { pwned?: number }).pwned)).toBeUndefined()
@@ -159,7 +134,7 @@ test('every section fits a phone: no horizontal scroll of the page', async ({ pa
   }
   // The busiest layouts: three targets in the composer and an open publishing detail.
   await tab(page, 'Composer').click()
-  await page.getByLabel('Text', { exact: true }).fill(LONG)
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill(LONG)
   for (const t of ['mastodon test', 'bluesky test', 'brand on X']) await page.getByRole('checkbox', { name: new RegExp(`^${t}`) }).check()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
   await tab(page, 'Publishing').click()
