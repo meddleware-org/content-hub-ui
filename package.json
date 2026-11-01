@@ -52,7 +52,7 @@
   "dependencies": {
     "@meddleware/content-hub-client": "0.0.1",
     "@meddleware/design-tokens": "^0.1.12",
-    "@meddleware/ui": "^0.1.36",
+    "@meddleware/ui": "^0.1.37",
     "@meddleware/web-utils": "^0.0.1",
     "vue": "^3.5.43"
   },
