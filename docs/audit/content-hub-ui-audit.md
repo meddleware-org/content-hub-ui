@@ -5,10 +5,11 @@
 **Project type:** Vue app + UI library
 **Template:**
 
-- AUDIT_TEMPLATE.md (2026-10-08)
-- AUDIT_TEMPLATE_TS.md (2026-10-08)
-- AUDIT_TEMPLATE_VUE.md (2026-10-08)
+- AUDIT_TEMPLATE.md (2026-11-01)
+- AUDIT_TEMPLATE_TS.md (2026-11-01)
+- AUDIT_TEMPLATE_VUE.md (2026-11-01)
 - AUDIT_TEMPLATE_IMG.md (2026-10-08)
+- AUDIT_TEMPLATE_A11Y.md (2026-11-01)
 
 **Package manager / lockfile:** npm 11, package-lock.json committed
 **Module format:** ESM
@@ -25,7 +26,7 @@
 **Deployed by:** the instance's `post-bootstrap/content-hub/` (C9)
 **Build args:** VITE_BRAND_NAME, VITE_DOCS_URL — not secret
 **Deployment status:** live on testnet (R2, 2026-10-30); 0.0.2 released, pinned by consensus (cosign valid) and deployed 2026-10-30
-**Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed); 0.0.3 re-verified 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps); 0.0.4 re-verified 2026-10-31 (Shared fields, tables and meters from ui, split views)
+**Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed); 0.0.3 released 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps); 0.0.4 released 2026-10-31 (Shared fields, tables and meters from ui, split views); frontend-wave delta review 2026-11-01 (real review of the 2026-10-19 → 2026-11-01 changes; see the delta section)
 **Reviewer:** Internal review
 **Severity ceiling:** Medium — the admin console of an operator; it holds no credential (Access does) and the server authorises every action
 **Status:** C7 — all seven sections implemented against the admin API; 100 vitest tests; 16 Chromium tests (flows, phone width, axe in every theme and season); lint (stylelint, eslint + a11y, html-validate), type-check, build, CSP and dist checks green; the runtime image (built from this `dist`) passes `scripts/smoke.sh`. The full image build waits for `@meddleware/content-hub-client` to be published (F8)
@@ -38,6 +39,8 @@ The operator's console: a thin display-and-input layer over the admin API. Every
 changes, permissions) is the server's; the console previews with the shared client library and shows what the server
 refused. The properties that matter for an admin tool that can post publicly are the session, CSRF and rendering
 handling, which are pinned by tests below. Nothing is published.
+
+**2026-11-01 update.** The console was rebuilt on the shared components and its money, time and pager helpers moved to web-utils. The review found one robustness defect — a malformed audit record could blank the Budgets view (F10, fixed in web-utils) — and confirmed that caps are parsed exactly and decided by the server (F11) and that the console passes the shared sweep (F12).
 
 ## Threat model / trust boundaries
 
@@ -133,6 +136,33 @@ build cannot pass.
 tampering); a storage that is blocked, full or absent degrades to no draft without an error.
 **Remediation / evidence:** `tests/lib.test.ts` (tampered values, unavailable storage). The draft is cleared when the
 post is queued or discarded.
+
+### Frontend wave delta review (2026-11-01) — 0.0.3 to 0.0.4 reviewed · 0.0.5 prepared
+
+Scope: the changes since the last substantive entry (2026-10-30, 0.0.2, which fixed the table-header rows from screenshots): 0.0.4 — the console rebuilt from `@meddleware/ui` fields, tables, meters, badges and pager (its own `TextField`, `SelectField`, `StatusBadge`, `TableScroll`, `UsageMeter`, `ZonedInput` deleted), the views split into smaller components (`PostsList`, `PreviewPanel`, `TargetPicker`, `TargetsTable`, `SendingSwitch`…), and `lib/money.ts`, `time.ts`, `calendar.ts` and `pager.ts` replaced by `@meddleware/web-utils` — the exact micro-USD parse and format, time zones, the month grid. About 1 000 lines added and 1 500 removed across 40 source files; the five-browser sweep. The release tool's "re-verified" marks for these releases recorded no review; this section is the review. Read: `lib/budgets.ts` (caps, usage, the audit trail's before/after rendering), `BudgetsView.vue` (the cap form and what it validates), `DashboardView.vue`, `ComposerView.vue` and the time-zone handling it uses, the web-utils helpers it now calls (`parseUsd`, `formatUsd`, `formatDateTime`, `monthGrid`), the Dockerfile and CSP, the workflows and the tests. Ran (with the locally packed `ui` 0.1.38, `design-tokens` 0.1.13, `web-utils` 0.0.2, `frontend-config` 0.0.2): the audit gate (0 not allowlisted; the two `extract-zip` advisories are allowlisted until 2027-01-31), `vue-tsc`, lint (stylelint, eslint, html-validate), `vitest` (6 files, 100 tests), the production build and `check:csp` and `check:dist`, `npm pack --dry-run` (43 files, 154 KiB: `src/`, `index.html`, `vite.config.ts`, `tsconfig.json`, `CHANGELOG.md`; no test, e2e or audit file), and the browser suite on Chromium, Firefox, WebKit, a Pixel 7 and an iPhone 14 with the CI font (DejaVu Sans through fontconfig): **715 passed in 21.1 minutes**.
+
+### F10 — A cap value that is not a number threw while rendering the audit trail
+**Severity:** Low   **Disposition:** RESOLVED
+**Where:** `src/lib/budgets.ts::describeChange` → `@meddleware/web-utils` `formatUsd`
+**Issue:** `describeChange` turns the audit trail's before/after cap lists (JSON of type `unknown`) into sentences. Its type guard `isCap` checks that the keys exist, not that `monthly_limit_usd_micros` is a number; `formatUsd` then ran `BigInt(Math.trunc(value))`, which throws for `undefined` or `NaN`, inside a render.
+**Impact:** one audit record with a missing or older-shaped field (the operator's own server wrote it) would have blanked the Budgets view instead of showing a line. No money is wrongly shown: nothing is shown. The caps themselves are enforced by the server, and this view only explains them.
+**Remediation / evidence:** fixed at the source: `formatUsd` shows `—` for a value that is not a finite number (web-utils 0.0.2, its F8, with a test), the same way `formatBytes` and `formatDateTime` already behave. This repository's `budgets` tests keep their cases; the console now renders such a record.
+
+### F11 — Positive: caps are parsed exactly, checked against the instance ceiling in the form, and still decided by the server
+**Severity:** Positive
+**Where:** `src/views/BudgetsView.vue`, `src/lib/budgets.ts`
+**Evidence:** `BudgetsView` parses a typed cap with `parseUsd` (digits only, at most six decimals, at most nine whole digits, refused otherwise; the result is a safe integer of micro-USD — no floating point), compares it with the instance ceiling it read ("Above the instance ceiling of …"), and sends the integer; the header of `lib/budgets.ts` states the rule that the server enforces the caps and the ceilings and these helpers only explain them. `percent`/`level` treat a cap of 0 with any use as 100. A cap at its limit is shown in words as well as colour (`LEVEL_TEXT`, so colour is never the only cue, WCAG 1.4.1).
+
+### F12 — Positive: the shared sweep covers every screen and passes on five browsers with the CI font
+**Severity:** Positive
+**Where:** e2e/a11y.spec.ts (`defineA11ySuite`, AAA `gate`)
+**Evidence:** the console's sections and their states (dashboard, roadmap item, the public preview, tasks, composer, publishing, schedule, budgets and their empty and error states, the sweep lists them in `e2e/a11y.spec.ts`) each at AA and AAA (gating) in all ten theme × season looks, at 320 px, 200% text, in forced colours, under reduced motion and by keyboard, on five browser projects: 715 tests passed with the CI font. The API is answered by the specs through `page.route` (no credential reaches the page: Access holds it).
+
+### Delta notes (A11Y lens, `AUDIT_TEMPLATE_A11Y.md`)
+- **Support promise:** the shared browserslist (`@meddleware/frontend-config/browserslist-config`); build target through `viteTarget()`; compat lints on.
+- **Accessibility gates:** the shared sweep (axe AA and AAA `gate`; 320 px reflow; 200% text; forced colours; reduced motion; keyboard incl. focus not obscured), Lighthouse CI on the production build, `check:csp` and `check:dist`, five browser projects in CI.
+- **Known exceptions:** none disabled; the 44 px enhanced target size, link purpose, reading order and screen-reader announcements are reviewed from screenshots (`npm run shots`), not automated.
+- **Supply chain:** `.github/audit-gate.mjs` with two dated `extract-zip` allowlist entries (dev-only, via `@lhci/cli`, expiry 2027-01-31, D104; OPERATOR_TASKS.md) and the `basic-ftp`/`tmp`/`zod` overrides; Dependabot (npm, Actions, Docker); `@meddleware/frontend-config` is a dev dependency (its audit F5).
 
 ## Section A — Invariant verification matrix
 
@@ -247,3 +277,4 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 - 2026-10-29 — C9: deployment prepared in the operator's workspace; the console passed against the real admin API in the local end-to-end dry run.
 - 2026-10-30 — R2: released (v0.0.1), image signed and deployed behind Access on `hub.`; the npm package is published.
 - 2026-10-30 — live sign-in verified by the maintainer (PIN + security key); `hub.` admits only `admin@meddleware.co.uk` (own Access policy).
+- 2026-11-01 — frontend-wave delta review of 0.0.3 to 0.0.4. Read the budget and caps code, the composer's time handling, the web-utils helpers it now uses, the build configuration, the Dockerfile and CSP, the workflows and the tests; ran the gates and the five-browser suite with the CI font (715 passed in 21.1 minutes). Fixed F10 (a non-numeric cap in an audit record threw while rendering: `formatUsd` now shows a dash, in web-utils 0.0.2); F11–F12 recorded as Positive. The release tool's bare "re-verified" marks were reworded to "released". `**Template:**` dates reconciled to the 2026-11-01 registry (TS/VUE changes add rows; the VUE colour row moved to A11Y, applied in full here) with no disposition change.
