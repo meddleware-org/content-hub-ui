@@ -29,7 +29,7 @@
 **Review date:** 2026-10-29; 0.0.2 re-verified 2026-10-30 against screenshots at phone, tablet and desktop widths (nested table-header rows, the phone filter layout and the table scroll cue fixed; deployed); 0.0.3 released 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps); 0.0.4 released 2026-10-31 (Shared fields, tables and meters from ui, split views); frontend-wave delta review 2026-11-01 (real review of the 2026-10-19 → 2026-11-01 changes; see the delta section)
 **Reviewer:** Internal review
 **Severity ceiling:** Medium — the admin console of an operator; it holds no credential (Access does) and the server authorises every action
-**Status:** C7 — all seven sections implemented against the admin API; 100 vitest tests; 16 Chromium tests (flows, phone width, axe in every theme and season); lint (stylelint, eslint + a11y, html-validate), type-check, build, CSP and dist checks green; the runtime image (built from this `dist`) passes `scripts/smoke.sh`. The full image build waits for `@meddleware/content-hub-client` to be published (F8)
+**Status:** C7 — all seven sections implemented against the admin API; 100 vitest tests; 16 Chromium tests (flows, phone width, axe in every theme and season); lint (stylelint, eslint + a11y, html-validate), type-check, build, CSP and dist checks green; the runtime image (built from this `dist`) passes `scripts/smoke.sh`. The client is published and the image builds from the registry (F8 RESOLVED; released and deployed as 0.0.5)
 
 ---
 
@@ -119,12 +119,13 @@ border) and `ModeSwitch` (native radios, a tick on the chosen one) so it ships a
 fix the two components (and the tint maths) in `ui`, then the local copies can be dropped.
 
 ### F8 — The console depends on a client that is not published
-**Severity:** Low   **Disposition:** DEFERRED
+**Severity:** Low   **Disposition:** RESOLVED (2026-10-30: the client's first publication; re-confirmed 2026-11-06)
 **Where:** `package.json` (`@meddleware/content-hub-client` 0.0.1), `package-lock.json`, `Dockerfile` (`npm ci`)
 **Issue:** The client's first publication is part of R2; until then `npm ci` cannot resolve it, so CI and the full image
 build cannot pass.
 **Impact:** None while undeployed. Local checks install the client from a packed tarball.
 **Remediation / evidence:** R2 order: publish the client, regenerate the lockfile here, then CI and the image.
+**Closed:** `@meddleware/content-hub-client` 0.0.1 was published to npm from CI with provenance on 2026-10-30 and this package's lockfile resolves it from the registry; `npm ci` works in CI and in the image build (every release since, the latest being 0.0.5 on 2026-11-05).
 
 ### F9 — Unsent drafts are kept in the browser
 **Severity:** Info   **Disposition:** ACCEPTED
@@ -185,7 +186,7 @@ Scope: the changes since the last substantive entry (2026-10-30, 0.0.2, which fi
 
 | Dependency | Pinned version / rev / object ID | Liveness dependency? | CVE / audit status | Notes |
 | --- | --- | --- | --- | --- |
-| npm dev and runtime dependencies | `package-lock.json` (to be regenerated at R2, F8) | build only (runtime: vue, @meddleware/ui, design-tokens, content-hub-client) | `npm audit`: 0 vulnerabilities (2026-10-29) | the client has no runtime dependencies |
+| npm dev and runtime dependencies | `package-lock.json` (regenerated at R2 against the published client, F8) | build only (runtime: vue, @meddleware/ui, design-tokens, content-hub-client) | `npm audit`: 0 vulnerabilities (2026-10-29) | the client has no runtime dependencies |
 | `@playwright/test`, `@axe-core/playwright` | dev only (`~1.64.1`, `^4.14.0`) | tests only | clean | never reach `dist` (`check:dist`) |
 
 ### B.2 Publish authority, capabilities & secret custody
@@ -216,7 +217,7 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 
 | Path | Hermetic unit test? | Deferred to (localnet / testnet / running committee / live relay)? | Tracking |
 | --- | --- | --- | --- |
-| Against the live service | no (a fake admin API stands in; the service's contract job proves the routes) | C9 local end-to-end, then R2 | F8 |
+| Against the live service | no (a fake admin API stands in; the service's contract job proves the routes) | C9 local end-to-end, then R2 (done 2026-10-30) | F8 (RESOLVED) |
 | Access sign-in redirect on the real gateway | simulated (a 302 to another origin) | R2 | — |
 | Clipboard copy in a browser permission-denied state | falls back to a message | — | — |
 
