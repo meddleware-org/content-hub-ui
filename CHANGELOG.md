@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.0.7 — 2026-11-06
 
 ### Changed
 
+- Image base `static-server` 0.1.12 and the dev tools of the Dependabot groups merged on 2026-11-06.
 - `ComposerEditor` takes the console's `zone` and `expired` refs by destructuring, so the template type-checks the same under every `vue-tsc` (3.3.14 mistypes `c.zone.value` there).
 
 ## 0.0.6 — 2026-11-06
