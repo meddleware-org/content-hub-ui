@@ -18,7 +18,8 @@ defineProps<{
   overflowing: string[]
 }>()
 defineEmits<{ saveDraft: []; queue: []; fresh: [] }>()
-const c = useConsole()
+// The console's refs, destructured so the template unwraps them (vue-tsc 3.3.14 mistypes `c.zone.value` on a context object here).
+const { zone, expired } = useConsole()
 </script>
 
 <template>
@@ -33,10 +34,10 @@ const c = useConsole()
       hint="Canonical format: paragraphs, **bold**, *emphasis*, `code`, [links](https://example.org), lists. One text, rendered for each platform."
     />
     <TargetPicker v-model="selected" :choices="choices" />
-    <UiDateTimeField id="post-when" v-model="scheduledAt" :zone="c.zone.value" label="Send at" hint="Leave empty to send as soon as the worker picks it up." />
+    <UiDateTimeField id="post-when" v-model="scheduledAt" :zone="zone" label="Send at" hint="Leave empty to send as soon as the worker picks it up." />
 
     <p class="actions">
-      <UiButton variant="secondary" :disabled="busy || title.trim() === '' || c.expired.value" @click="$emit('saveDraft')">Save draft</UiButton>
+      <UiButton variant="secondary" :disabled="busy || title.trim() === '' || expired" @click="$emit('saveDraft')">Save draft</UiButton>
       <UiButton variant="primary" :disabled="!canQueue" @click="$emit('queue')">Queue for {{ count }} target{{ count === 1 ? '' : 's' }}</UiButton>
       <UiButton variant="ghost" @click="$emit('fresh')">New post</UiButton>
     </p>
