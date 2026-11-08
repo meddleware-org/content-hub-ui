@@ -48,7 +48,7 @@ export function describeError(e: unknown): string {
     case 422:
       return e.message || 'The server refused a value. Check the fields.'
     case 503:
-      return 'The service is temporarily unavailable (the database or the role check). Try again in a moment; nothing was changed.'
+      return 'The service is temporarily unavailable. Try again in a moment; nothing was changed.'
     default:
       return e.status >= 500 ? 'The server had an internal problem. Try again; if it persists, report it.' : e.message || `Unexpected answer (${e.status}).`
   }

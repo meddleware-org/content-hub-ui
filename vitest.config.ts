@@ -1,18 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import { inlineMeddleware } from '@meddleware/frontend-config/vitest'
+import { vueTestConfig } from '@meddleware/frontend-config/vitest'
 
-// Unit tests for the read-only composables (event merge, gate null-filtering, proposals stub) plus
-// the explorer-URL scheme safety. jsdom hosts the Vue reactivity; dedupe keeps a single Vue runtime.
-export default defineConfig({
-  plugins: [vue()],
-  resolve: { dedupe: ['vue', '@vue/test-utils'] },
-  test: {
-    environment: 'jsdom',
-    include: ['tests/**/*.test.ts'],
-    setupFiles: ['tests/support/setup.ts'],
-    exclude: ['node_modules/**'],
-    // @meddleware/ui imports its own .css (each component brings its CSS), which Node cannot import: process it through Vite.
-    server: { deps: { inline: inlineMeddleware } },
-  },
-})
+// Unit and component tests: the libraries, the HTTP layer, every section through ContentHubView against the fake admin API, and the design-token
+// check. jsdom hosts the Vue reactivity and the mounts; the real-browser gate lives in e2e/ (Playwright).
+export default defineConfig(vueTestConfig({ plugins: [vue()], test: { setupFiles: ['tests/support/setup.ts'] } }))

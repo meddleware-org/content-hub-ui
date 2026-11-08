@@ -46,7 +46,7 @@ const resultUrl = (i: Instance) => (i.url_or_external_id && /^https:\/\//.test(i
         <th scope="col"><span class="mw-visually-hidden">Actions</span></th>
       </template>
       <tr v-for="i in instances.items.value" :key="i.id">
-        <th scope="row">{{ titles[i.post_id] ?? `post #${i.post_id}` }}<br /><span class="muted">instance #{{ i.id }}</span></th>
+        <th scope="row">{{ titles[i.post_id] ?? `post #${i.post_id}` }}<span class="muted sub">instance #{{ i.id }}</span></th>
         <td>{{ targetName(i.platform_target_id) }}</td>
         <td>
           <UiBadge :tone="statusTone(i.status)">{{ statusLabel(i.status) }}</UiBadge>
@@ -76,5 +76,9 @@ const resultUrl = (i: Instance) => (i.url_or_external_id && /^https:\/\//.test(i
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
+}
+
+.sub {
+  display: block;
 }
 </style>

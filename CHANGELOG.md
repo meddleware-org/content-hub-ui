@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.8 — 2026-11-07
+
+### Changed
+
+- Table row headers (roadmap items, tasks, posts on targets, targets) and the public-roadmap preview no longer use `<br>` for layout: the second line (phase and type, task key, instance number, platform, item description) is a block element under the title.
+- The "service temporarily unavailable" message no longer names the internals behind it (the database or the role check).
+- Takes `@meddleware/ui` ^0.1.40, `@meddleware/web-utils` ^0.0.4 and `@meddleware/frontend-config` ^0.0.7.
+- The audit gate, third-party licence notices and inline-script CSP check are the shared `mw-audit-gate`, `mw-third-party-licenses` and `mw-check-csp-inline`; their local copies (and the test of the last) are removed. The build and test configuration use `meddlewareApp`, `vueTestConfig` and the shared tsconfig base; `mw-sync --check` runs in CI. No change to the built console beyond the markup above.
+- `AGENTS.md` is a pointer to `CLAUDE.md`, which now holds the layout and commands; `README.md` no longer says the client is unpublished.
+
 ## 0.0.7 — 2026-11-06
 
 ### Changed

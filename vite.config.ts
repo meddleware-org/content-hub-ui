@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { themeInit, viteTarget } from '@meddleware/frontend-config/vite'
+import { meddlewareApp } from '@meddleware/frontend-config/vite'
 
 // The Content-Security-Policy the production image sends (Dockerfile `ARG CSP`). `vite preview` sends the same one,
 // so the browser tests run under the real policy and a violation fails them. `upgrade-insecure-requests` is left
@@ -17,14 +17,18 @@ function imageCsp(): string | undefined {
 const csp = imageCsp()
 
 // The admin API is same-origin in production (the ingress routes /api/ on the admin host to the admin
-// process); in development it is proxied to a local `content-hub admin`.
-export default defineConfig({
-  build: { target: viteTarget() },
-  plugins: [vue(), themeInit({ default: 'dark' })],
-  server: {
-    proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+// process); in development it is proxied to a local `content-hub admin`. Dark is the console's default mode.
+export default defineConfig(
+  meddlewareApp({
+    plugins: [vue()],
+    wallet: false,
+    config: {
+      server: {
+        proxy: {
+          '/api': { target: 'http://localhost:8080', changeOrigin: true },
+        },
+      },
+      preview: { headers: csp ? { 'Content-Security-Policy': csp } : {} },
     },
-  },
-  preview: { headers: csp ? { 'Content-Security-Policy': csp } : {} },
-})
+  }),
+)

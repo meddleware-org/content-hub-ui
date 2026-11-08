@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { SECTIONS } from '../src/sections.js'
-import { mountConsole, openTab, type Harness } from './support/mount.js'
+import { mountConsole, openTab, segment, type Harness } from './support/mount.js'
 
 let h: Harness | null = null
 afterEach(() => {
@@ -46,6 +46,26 @@ describe('ContentHubView', () => {
       }
     }
     expect(tables).toBeGreaterThanOrEqual(4)
+  })
+
+  it('lays text out with elements, never with line breaks, and gives every table row a row header', async () => {
+    // A title with a second line under it (a key, a phase, an id) is a block element, not a `<br>` in a header cell.
+    h = await mountConsole()
+    for (const section of SECTIONS) {
+      await openTab(h, section.label)
+      if (section.label === 'Roadmap') {
+        for (const audience of ['Public: people', 'Public: bots']) {
+          await segment(h, audience)
+          expect(h.w.element.querySelectorAll('br'), `${section.label} / ${audience}: a line break`).toHaveLength(0)
+        }
+        await segment(h, 'Internal')
+      }
+      expect(h.w.element.querySelectorAll('br'), `${section.label}: a line break`).toHaveLength(0)
+      for (const row of Array.from(h.w.element.querySelectorAll('tbody tr'))) {
+        const first = row.firstElementChild
+        if (first?.tagName === 'TH') expect(first.getAttribute('scope'), `${section.label}: a row header without scope`).toBe('row')
+      }
+    }
   })
 
   it('talks only to the same-origin admin API', async () => {

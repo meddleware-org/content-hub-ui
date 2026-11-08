@@ -164,7 +164,7 @@ async function save() {
             <th scope="col"><span class="mw-visually-hidden">Actions</span></th>
           </template>
           <tr v-for="i in items.items.value" :key="i.id">
-            <th scope="row">{{ i.internal_title }}<br /><span class="muted">{{ phaseName(i.phase_id) }} · {{ humanize(i.item_type) }}</span></th>
+            <th scope="row">{{ i.internal_title }}<span class="muted sub">{{ phaseName(i.phase_id) }} · {{ humanize(i.item_type) }}</span></th>
             <td>{{ i.public_title ?? '—' }}</td>
             <td>{{ audiences(i) }}</td>
             <td><UiBadge :tone="statusTone(i.status)">{{ statusLabel(i.status) }}</UiBadge></td>
@@ -251,5 +251,9 @@ async function save() {
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
+}
+
+.sub {
+  display: block;
 }
 </style>

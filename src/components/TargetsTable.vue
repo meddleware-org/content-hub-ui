@@ -18,7 +18,7 @@ defineEmits<{ patch: [target: PlatformTarget, body: Record<string, unknown>, say
         <th scope="col">Sends for real</th>
       </template>
       <tr v-for="t in targets" :key="t.id">
-        <th scope="row">{{ t.name }}<br /><span class="muted">{{ t.platform_code }}<template v-if="t.external_ref"> · {{ t.external_ref }}</template></span></th>
+        <th scope="row">{{ t.name }}<span class="muted sub">{{ t.platform_code }}<template v-if="t.external_ref"> · {{ t.external_ref }}</template></span></th>
         <td>{{ t.secret_ref ?? '—' }}</td>
         <td><UiCheckField :label="`${t.name} is enabled`" :model-value="t.enabled" :disabled="busy" @update:model-value="$emit('patch', t, { enabled: $event }, `${t.name} ${$event ? 'enabled' : 'disabled'}.`)" /></td>
         <td><UiCheckField :label="`${t.name} is a sandbox`" :model-value="t.is_sandbox" :disabled="busy" @update:model-value="$emit('patch', t, { is_sandbox: $event }, `${t.name} ${$event ? 'marked' : 'no longer marked'} as a sandbox.`)" /></td>
@@ -33,5 +33,9 @@ defineEmits<{ patch: [target: PlatformTarget, body: Record<string, unknown>, say
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
+}
+
+.sub {
+  display: block;
 }
 </style>

@@ -153,7 +153,7 @@ const LINK_KINDS = [['external', 'A web page'], ['post', 'A post'], ['platform_i
           <th scope="row">
             {{ t.title }}
             <UiBadge v-if="t.entity_gated" tone="warn">needs the organisation</UiBadge>
-            <br /><span class="muted">{{ t.key }}</span>
+            <span class="muted sub">{{ t.key }}</span>
           </th>
           <td>{{ taskType(t.task_type) }}</td>
           <td><UiBadge :tone="statusTone(t.status)">{{ statusLabel(t.status) }}</UiBadge></td>
@@ -240,5 +240,9 @@ const LINK_KINDS = [['external', 'A web page'], ['post', 'A post'], ['platform_i
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
+}
+
+.sub {
+  display: block;
 }
 </style>

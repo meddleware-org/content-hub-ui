@@ -4,7 +4,7 @@ The content hub's admin console: dashboard, roadmap, tasks, composer, publishing
 single-page app on `@meddleware/ui`, served by static-server on the admin host, and exported as `ContentHubView`
 for embedding. Backend: [content-hub-service](https://github.com/meddleware-org/content-hub-service).
 
-**Status (0.0.2):** all seven sections work against the admin API.
+**Status:** all seven sections work against the admin API.
 
 | Section | What it does |
 | --- | --- |
@@ -45,9 +45,9 @@ npx playwright install chromium && npm run test:e2e     # the built console in a
 docker build -t content-hub-ui:dev . && bash scripts/smoke.sh content-hub-ui:dev
 ```
 
-`@meddleware/content-hub-client` is a dependency that is not published yet. Until it is, install it from a checkout
-(`npm run build && npm pack` in `content-hub-client`, then `npm install --no-save <tarball>` here); once it is
-published, regenerate `package-lock.json` and the image builds (`npm ci`). The release order is client first.
+`@meddleware/content-hub-client` is published; the release order is still client first, then this console. The shared build and
+CI tooling (`mw-audit-gate`, `mw-third-party-licenses`, `mw-check-csp-inline`, `mw-sync`) comes from `@meddleware/frontend-config`;
+`npx mw-sync --check` verifies the files it owns.
 
 ## Tests
 
@@ -55,9 +55,9 @@ published, regenerate `package-lock.json` and the image builds (`npm ci`). The r
 | --- | --- | --- |
 | Unit | `tests/lib.test.ts` | time zones across clock changes, money without floats, unsent drafts (tamper and unavailable storage), the calendar, cap rows and the audit sentences, the composer's arithmetic |
 | Unit | `tests/http.test.ts` | the CSRF header on writes only, same-origin, the session ending in four ways, error mapping |
-| Component | `tests/console.test.ts` | every section through `ContentHubView` against a fake admin API that enforces the CSRF header, the state machines and the platform limits |
+| Component | `tests/console.test.ts`, `tests/content-hub-view.test.ts` | every section through `ContentHubView` against a fake admin API that enforces the CSRF header, the state machines and the platform limits |
 | Browser | `e2e/console.spec.ts` | the built app in Chromium under the production CSP: session expiry through a real redirect, draft restored after the reload, composing across three platforms, manual posting, resolving an uncertain send, the public preview, a hostile post, phone width |
-| Accessibility | `e2e/accessibility.spec.ts` | axe (WCAG 2.2 AA) over every section in light and dark and all four seasons |
+| Accessibility | `e2e/a11y.spec.ts` | the shared sweep (`@meddleware/frontend-config/a11y`): WCAG 2.2 AA and AAA over every section in every colour mode and season, reflow at 320 px, 200% text, forced colours, reduced motion, keyboard |
 | Build | `scripts/check-dist.mjs` | no fake API, test hook or test runner reaches `dist`; `noindex` is present |
 
 The fake admin API (`tests/support/fake-api.ts`) is test support only; nothing under `src/` imports it.

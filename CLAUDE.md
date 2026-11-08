@@ -34,6 +34,19 @@ The content hub's admin console. See [README.md](README.md) and the service's
   `TargetPicker`, `PreviewPanel`, `PostsList`) and publishing (`SendingSwitch`, `InstancesTable`, `InstanceDetail`,
   `TargetsTable`). A view owns the data and the requests; a piece takes props and emits.
 
+- `src/main.ts` (standalone bootstrap: styles, `App.vue`), `src/App.vue` (the shell: header, `ContentHubView`, footer),
+  `src/ContentHubView.vue` (the console and the library export, with `src/index.ts`), `src/sections.ts` (the sections in
+  navigation order). `public/` holds the favicon, `robots.txt` (disallow all) and `llms.txt`; `lighthouserc.cjs` is Lighthouse CI.
+- `tests/` (unit and component tests; `tests/support/fake-api.ts` is test support only) and `e2e/` (`open.ts` wires the
+  fake API into the browser tests, `a11y.spec.ts` is the shared sweep, `screens.spec.ts` the screenshots).
+
+## Shell
+
+`App.vue` keeps its own header and footer instead of `AppToolShell` from `@meddleware/ui`: that shell always renders a
+documentation link and a developer-site link, defaulting them to the Sui tool pages (`…/blockchain/sui/<slug>/`,
+`meddleware.dev/sui/<slug>/`), which do not exist for the content hub. This console is not a Sui tool and shows the
+documentation link only when a deployment gives one (`VITE_DOCS_URL`). Switch to `AppToolShell` when it can omit either link.
+
 ## More invariants
 
 - **No optimistic updates.** The console never shows a state the server has not confirmed; a failed write leaves the
@@ -63,3 +76,17 @@ accessibility sweep (`e2e/a11y.spec.ts`, from `@meddleware/frontend-config/a11y`
 AA and AAA (gating) in every colour mode × season, then reflow at 320 px, 200% text, forced colours, reduced motion and the
 keyboard. `E2E_BROWSERS=all` runs five browsers (CI does). `npm run lhci`: Lighthouse. `scripts/smoke.sh` probes the built image (user, headers,
 CSP, assets, licences). `npm run check:dist` fails if test support reaches `dist`.
+
+## Commands
+
+```bash
+npm ci && npm run type-check && npm run lint && npm test && npm run build && npx mw-audit-gate && npm run check:csp && npm run check:dist && npm run check:licenses
+npx mw-sync --check                                    # the shared files (postcss, stylelint, .dockerignore, dependabot, allowlist, Dockerfile CSP)
+npx playwright install chromium && npm run test:e2e    # E2E_BROWSERS=all for five browsers
+npm run lhci
+docker build -t content-hub-ui:ci . && bash scripts/smoke.sh content-hub-ui:ci
+```
+
+`check:csp`, `check:licenses`, the audit gate and `mw-sync` come from `@meddleware/frontend-config` (`mw-check-csp-inline`,
+`mw-third-party-licenses`, `mw-audit-gate`, `mw-sync`; the profile is `console`, set in package.json `"meddleware"`). `check:dist`
+and `scripts/smoke.sh` are this app's own.

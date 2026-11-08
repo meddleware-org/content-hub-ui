@@ -24,7 +24,7 @@ const c = useConsole()
         <li v-for="i in p.items" :key="i.id">
           <strong>{{ i.title }}</strong> <UiBadge :tone="statusTone(i.status)">{{ statusLabel(i.status) }}</UiBadge>
           <template v-if="i.due_at"> · due {{ formatDateTime(i.due_at, c.zone.value) }}</template>
-          <br />{{ i.description }}
+          <span v-if="i.description" class="sub">{{ i.description }}</span>
         </li>
       </ul>
     </section>
@@ -39,5 +39,9 @@ const c = useConsole()
 .muted {
   color: var(--muted);
   font-size: var(--font-size-sm);
+}
+
+.sub {
+  display: block;
 }
 </style>

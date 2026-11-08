@@ -77,6 +77,8 @@ describe('the HTTP layer', () => {
     expect(describeError(new ApiError(409, 'conflict', 'target 3 already has a live instance of this post'))).toContain('already has a live instance')
     expect(describeError(new ApiError(422, 'invalid', 'secret_ref is the NAME of an environment variable'))).toContain('secret_ref')
     expect(describeError(new ApiError(503, 'unavailable', 'keto'))).toContain('temporarily unavailable')
+    // The cause stays out of the sentence (the server's own wording, here a dependency's name, is not shown for a 503).
+    expect(describeError(new ApiError(503, 'unavailable', 'keto'))).not.toMatch(/keto|database|VITE_/i)
     expect(describeError(new ApiError(500, 'internal', 'stack trace here'))).not.toContain('stack trace')
     expect(describeError(new Error('boom'))).not.toContain('boom')
   })
