@@ -241,7 +241,7 @@ and phone width, 8 axe runs); stylelint, eslint + a11y, html-validate, type-chec
 - [x] signed in as the operator: one-time PIN, security-key MFA, the console loading ("Signed in as admin@meddleware.co.uk"), sign-out and the re-prompt checked live by the maintainer; a second address is refused — 2026-10-30
 
 ### pre-mainnet
-- [ ] external review
+- [ ] external review (ADR-0009 gate G4: not a launch gate; covered by redeploy and the audit pass)
 
 ## Cross-project themes
 
