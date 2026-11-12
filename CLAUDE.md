@@ -42,12 +42,12 @@ The content hub's admin console. See [README.md](README.md) and the service's
 
 ## Shell
 
-`App.vue` keeps its own header and footer (`UiAppShell` + `AppHeader` + `AppFooter`) instead of `AppToolShell` from
-`@meddleware/ui`. The shell can now leave out its documentation and developer links (`:docs-url="false"`, `:dev-url="false"`)
-and its hidden heading, but it always limits the page to the tool width (`UiAppShell contained`: `--mw-tool-content-max`, 45rem),
-and this console is a full-width admin console (wide tables, the composer's per-platform previews, the tab bar). The header
-shows `<BrandMark />` before the brand text (`VITE_BRAND_NAME`, default "Content hub"); the footer links documentation only when
-a deployment gives `VITE_DOCS_URL`, and never a developer link. Switch to `AppToolShell` when it can drop `contained` (FU-0095).
+`App.vue` is `<AppToolShell :contained="false">` from `@meddleware/ui` (>= 0.1.43; FU-0095): the shared header (`<BrandMark />`
+before the brand text, from `:title`, which is `VITE_BRAND_NAME`, default "Content hub"; the colour-mode control) and footer
+(copyright; documentation link only when a deployment gives `VITE_DOCS_URL`, otherwise `:docs-url="false"`; never a developer
+link, `:dev-url="false"`). `contained` is false because this console is full width (wide tables, the composer's per-platform
+previews, the tab bar); the default would limit the page to the tool width (`--mw-tool-content-max`, 45rem). The page has no
+`h1` of its own, so the shell's visually hidden heading (the brand name) stays on: exactly one `h1`.
 
 `meddlewareApp({ name })` (the brand name, read from `VITE_BRAND_NAME` at build time) also emits the brand icon set (favicon,
 apple-touch-icon, 192/512 icons, `site.webmanifest`) and injects the links, so the app keeps no `public/favicon.*` and no icon

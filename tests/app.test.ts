@@ -1,4 +1,4 @@
-// The standalone page: the company mark beside the brand name in the header, one heading, the copyright in the footer, and no
+// The standalone page (AppToolShell, not contained): the company mark beside the brand name in the header, one heading, the copyright in the footer, and no
 // documentation link unless a deployment sets one. The brand's icons are the shared set: the app keeps none of its own.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
@@ -21,6 +21,13 @@ describe('App', () => {
     expect(w.find('main .view').exists()).toBe(true)
     expect(w.get('footer').text()).toContain('Meddleware')
     expect(w.find('footer a[href*="docs"]').exists()).toBe(false)
+    expect(w.find('footer a[href*="meddleware.dev"]').exists()).toBe(false)
+  })
+
+  it('stays full width: the main region is not limited to the tool width', () => {
+    const main = mount(App).get('main')
+    expect(main.classes()).toContain('mw-shell__main')
+    expect(main.classes()).not.toContain('mw-shell__main--contained')
   })
 })
 

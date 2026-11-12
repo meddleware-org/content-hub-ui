@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.10 — 2026-11-12
+
+### Changed
+
+- The page is built with `AppToolShell` from `@meddleware/ui` ^0.1.43 (`:contained="false"`, so the console keeps its full width) instead of a hand-written shell. The header (mark beside the brand name, colour-mode control), the footer (copyright, documentation link only when `VITE_DOCS_URL` is set, never a developer link), the single visible heading and the `noindex` meta are unchanged.
+
 ## 0.0.9 — 2026-11-12
 
 ### Changed
