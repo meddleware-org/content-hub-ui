@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { meddlewareApp } from '@meddleware/frontend-config/vite'
 
@@ -18,8 +18,10 @@ const csp = imageCsp()
 
 // The admin API is same-origin in production (the ingress routes /api/ on the admin host to the admin
 // process); in development it is proxied to a local `content-hub admin`. Dark is the console's default mode.
-export default defineConfig(
+// The brand name (VITE_BRAND_NAME, a build argument) is also the web manifest's name.
+export default defineConfig((env) =>
   meddlewareApp({
+    name: loadEnv(env.mode, process.cwd(), 'VITE_').VITE_BRAND_NAME || 'Content hub',
     plugins: [vue()],
     wallet: false,
     config: {
@@ -30,5 +32,5 @@ export default defineConfig(
       },
       preview: { headers: csp ? { 'Content-Security-Policy': csp } : {} },
     },
-  }),
+  })(env),
 )

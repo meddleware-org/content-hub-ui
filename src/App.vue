@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Standalone shell of the admin console. The console itself is ContentHubView.vue (also exported).
-import { AppFooter, AppHeader, ColorModeControl, CopyrightLine, UiAppShell, useColorMode } from '@meddleware/ui'
+import { AppFooter, AppHeader, BrandMark, ColorModeControl, CopyrightLine, UiAppShell, useColorMode } from '@meddleware/ui'
 import ContentHubView from './ContentHubView.vue'
 
 const { mode, set } = useColorMode('dark')
@@ -12,7 +12,7 @@ const DOCS_URL = import.meta.env.VITE_DOCS_URL || undefined
   <UiAppShell>
     <template #header>
       <AppHeader variant="dark">
-        <template #brand>{{ BRAND }}</template>
+        <template #brand><BrandMark /> {{ BRAND }}</template>
         <template #actions>
           <ColorModeControl :model-value="mode" @update:model-value="set" />
         </template>

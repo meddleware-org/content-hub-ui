@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.9 — 2026-11-12
+
+### Changed
+
+- The header shows the Meddleware mark beside the brand name (`@meddleware/ui` ^0.1.42), and the browser tab, home-screen and web-manifest icons are the shared brand icon set. The app keeps no icon of its own: `public/favicon.svg` and the `<link rel="icon">` in `index.html` are removed, and `meddlewareApp` (`@meddleware/frontend-config` ^0.0.8, `name` from `VITE_BRAND_NAME`, default "Content hub") emits `favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` and `site.webmanifest` and injects the links. The page stays `noindex`.
+- No third-party fonts, scripts, styles, images or analytics: the console calls only its own `/api/v1`. CI workflows set `DO_NOT_TRACK=1`.
+- Internal: `@meddleware/web-utils` ^0.0.4. New tests: the mark in the header, no icon of the app's own, noindex, and (over the built `dist/`, run in CI after the build) the icon set once per page, no font file or font host, no third-party load and no origin beyond Meddleware sites and library strings.
+
 ## 0.0.8 — 2026-11-07
 
 ### Changed

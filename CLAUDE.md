@@ -36,16 +36,25 @@ The content hub's admin console. See [README.md](README.md) and the service's
 
 - `src/main.ts` (standalone bootstrap: styles, `App.vue`), `src/App.vue` (the shell: header, `ContentHubView`, footer),
   `src/ContentHubView.vue` (the console and the library export, with `src/index.ts`), `src/sections.ts` (the sections in
-  navigation order). `public/` holds the favicon, `robots.txt` (disallow all) and `llms.txt`; `lighthouserc.cjs` is Lighthouse CI.
+  navigation order). `public/` holds `robots.txt` (disallow all) and `llms.txt` (no icons: see Shell); `lighthouserc.cjs` is Lighthouse CI.
 - `tests/` (unit and component tests; `tests/support/fake-api.ts` is test support only) and `e2e/` (`open.ts` wires the
   fake API into the browser tests, `a11y.spec.ts` is the shared sweep, `screens.spec.ts` the screenshots).
 
 ## Shell
 
-`App.vue` keeps its own header and footer instead of `AppToolShell` from `@meddleware/ui`: that shell always renders a
-documentation link and a developer-site link, defaulting them to the Sui tool pages (`…/blockchain/sui/<slug>/`,
-`meddleware.dev/sui/<slug>/`), which do not exist for the content hub. This console is not a Sui tool and shows the
-documentation link only when a deployment gives one (`VITE_DOCS_URL`). Switch to `AppToolShell` when it can omit either link.
+`App.vue` keeps its own header and footer (`UiAppShell` + `AppHeader` + `AppFooter`) instead of `AppToolShell` from
+`@meddleware/ui`. The shell can now leave out its documentation and developer links (`:docs-url="false"`, `:dev-url="false"`)
+and its hidden heading, but it always limits the page to the tool width (`UiAppShell contained`: `--mw-tool-content-max`, 45rem),
+and this console is a full-width admin console (wide tables, the composer's per-platform previews, the tab bar). The header
+shows `<BrandMark />` before the brand text (`VITE_BRAND_NAME`, default "Content hub"); the footer links documentation only when
+a deployment gives `VITE_DOCS_URL`, and never a developer link. Switch to `AppToolShell` when it can drop `contained` (FU-0095).
+
+`meddlewareApp({ name })` (the brand name, read from `VITE_BRAND_NAME` at build time) also emits the brand icon set (favicon,
+apple-touch-icon, 192/512 icons, `site.webmanifest`) and injects the links, so the app keeps no `public/favicon.*` and no icon
+`<link>` (`mw-sync --check` fails on the former); `index.html` keeps its `noindex` meta. `tests/dist.test.ts` runs after a build
+(CI sets `REQUIRE_DIST=1`; a plain `npm test` before any build skips it): the icon set once per page, noindex, no font file or
+font host, no third-party load, and no origin named beyond Meddleware sites and library strings. No third-party fonts, scripts,
+styles, images or analytics, ever; the only calls are to the console's own `/api/v1`.
 
 ## More invariants
 
