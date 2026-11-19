@@ -52,13 +52,13 @@
   "dependencies": {
     "@meddleware/content-hub-client": "0.0.1",
     "@meddleware/design-tokens": "^0.1.13",
-    "@meddleware/ui": "^0.1.43",
+    "@meddleware/ui": "^0.1.45",
     "@meddleware/web-utils": "^0.0.4",
     "vue": "^3.5.43"
   },
   "devDependencies": {
     "@lhci/cli": "^0.16.0",
-    "@meddleware/frontend-config": "^0.0.14",
+    "@meddleware/frontend-config": "^0.0.16",
     "@playwright/test": "~1.64.1",
     "@types/node": "~26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
