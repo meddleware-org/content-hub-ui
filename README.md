@@ -65,3 +65,7 @@ The fake admin API (`tests/support/fake-api.ts`) is test support only; nothing u
 ## Licence
 
 0BSD — see [LICENSE](LICENSE).
+
+## Open standards
+
+What this project speaks, what is planned and where you can extend it: [docs/INTEROP.md](docs/INTEROP.md).

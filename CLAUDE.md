@@ -99,3 +99,7 @@ docker build -t content-hub-ui:ci . && bash scripts/smoke.sh content-hub-ui:ci
 `check:csp`, `check:licenses`, the audit gate and `mw-sync` come from `@meddleware/frontend-config` (`mw-check-csp-inline`,
 `mw-third-party-licenses`, `mw-audit-gate`, `mw-sync`; the profile is `console`, set in package.json `"meddleware"`). `check:dist`
 and `scripts/smoke.sh` are this app's own.
+
+## Interoperability
+
+- [docs/INTEROP.md](docs/INTEROP.md): the standards this project speaks, what is planned, where to extend it, and what proves each claim.
