@@ -10,7 +10,7 @@ ARG CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 
 # The build stage runs on the BUILD host's architecture: its output (static files) is architecture-independent,
 # so no arm64 step runs under emulation. The final stage only COPYs into the multi-arch static-server image.
-FROM --platform=$BUILDPLATFORM node:26-slim@sha256:0d1e33586362bb9e608c4e751e7a9e7edb55c9ac11461ed5666af696cc461dd4 AS build
+FROM --platform=$BUILDPLATFORM node:26-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS build
 
 WORKDIR /app
 
