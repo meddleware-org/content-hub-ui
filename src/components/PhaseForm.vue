@@ -15,7 +15,6 @@ const c = useConsole()
 </script>
 
 <template>
-  <!-- The stable key. -->
   <UiTextField id="pf-key" v-model="form.key" label="Key" hint="Lower-case letters, digits and hyphens." />
   <!-- The position among phases. -->
   <UiTextField id="pf-order" v-model="form.sort_order" label="Position" inputmode="numeric" />

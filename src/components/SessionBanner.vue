@@ -11,7 +11,6 @@ const c = useConsole()
 </script>
 
 <template>
-  <!-- Shown only once a request found the session ended; it is an alert, so it is announced. -->
   <UiNotice v-if="c.expired.value" type="error" class="session-banner">
     <!-- What happened, then what is safe and what to do next. -->
     <strong>Your session has expired.</strong>

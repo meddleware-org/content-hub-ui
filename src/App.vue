@@ -13,7 +13,6 @@ const DOCS_URL = import.meta.env.VITE_DOCS_URL || false
 </script>
 
 <template>
-  <!-- The shell around the console; not contained, so the console uses the full width, and no developer link is shown. -->
   <AppToolShell :title="BRAND" slug="content-hub" :docs-url="DOCS_URL" :dev-url="false" :contained="false">
     <!-- The console. -->
     <ContentHubView />

@@ -11,7 +11,6 @@ defineEmits<{ set: [paused: boolean] }>()
 </script>
 
 <template>
-  <!-- The switch's own panel. -->
   <UiPanel title="Sending" :level="3">
     <!-- The server has not answered yet. -->
     <UiEmptyState v-if="paused === null">Reading the switch…</UiEmptyState>

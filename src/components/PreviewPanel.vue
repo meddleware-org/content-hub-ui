@@ -34,7 +34,6 @@ const check = computed(() => props.preview.check)
 </script>
 
 <template>
-  <!-- One panel per target. -->
   <UiPanel class="target-panel" :title="`${preview.target.name} — ${preview.def.name}`" :level="4">
     <!-- What the server refused for this target, in its own words. -->
     <UiNotice v-if="problem" type="error" :message="problem" />

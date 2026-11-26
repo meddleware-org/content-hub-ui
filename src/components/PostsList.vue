@@ -14,7 +14,6 @@ defineEmits<{ open: [id: number] }>()
 </script>
 
 <template>
-  <!-- The panel. -->
   <UiPanel title="Your posts" :level="3">
     <!-- A failed read, in words. -->
     <UiNotice v-if="posts.error.value" type="error" :message="posts.error.value" />

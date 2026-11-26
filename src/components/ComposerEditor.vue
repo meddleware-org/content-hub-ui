@@ -30,7 +30,6 @@ const { zone, expired } = useConsole()
 </script>
 
 <template>
-  <!-- The writing side, as a labelled region. -->
   <section class="editor" aria-labelledby="composer-write">
     <!-- The region's heading. -->
     <h3 id="composer-write">Write</h3>

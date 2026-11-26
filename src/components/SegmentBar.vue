@@ -70,7 +70,6 @@ const summary = computed(() => segments.value.map((s) => `characters ${s.start} 
 </script>
 
 <template>
-  <!-- A figure: the bar and its caption. -->
   <figure v-if="segments.length" class="segment-bar">
     <!-- The bar; the sentence is its accessible name and the caption repeats it as a list. -->
     <svg class="bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" :aria-label="summary" focusable="false">

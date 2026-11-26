@@ -13,7 +13,6 @@ defineEmits<{ patch: [target: PlatformTarget, body: Record<string, unknown>, say
 </script>
 
 <template>
-  <!-- The panel. -->
   <UiPanel title="Targets" :level="3">
     <!-- The table, with its caption for assistive technology. -->
     <UiDataTable caption="Targets" empty="No targets yet." :rows="targets.length">

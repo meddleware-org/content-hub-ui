@@ -169,7 +169,6 @@ async function save() {
 </script>
 
 <template>
-  <!-- The roadmap: notices, the view switch and the open view. -->
   <div class="roadmap">
     <!-- A failed request, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />

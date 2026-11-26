@@ -214,7 +214,6 @@ const changes = (a: AuditEntry) => describeChange(a.before, a.after, capName)
 </script>
 
 <template>
-  <!-- The budgets: notices, the caps table, a form for one target and the audit trail. -->
   <div class="budgets">
     <!-- A failed request, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />

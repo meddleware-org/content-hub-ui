@@ -261,7 +261,6 @@ async function createTarget() {
 </script>
 
 <template>
-  <!-- Publishing: the switch, the instances, one instance's detail, the targets and two dialogs. -->
   <div class="publishing">
     <!-- A failed request, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />

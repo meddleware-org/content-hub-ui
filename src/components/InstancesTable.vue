@@ -42,7 +42,6 @@ const resultUrl = (i: Instance) => (i.url_or_external_id && /^https:\/\//.test(i
 </script>
 
 <template>
-  <!-- The panel. -->
   <UiPanel title="Posts on targets" :level="3">
     <!-- The two filters and a refresh button. -->
     <div class="filters">

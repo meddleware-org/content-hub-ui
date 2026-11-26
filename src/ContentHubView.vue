@@ -74,7 +74,6 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
 </script>
 
 <template>
-  <!-- The console: banner, who and zone, tabs and the open section. -->
   <div class="content-hub-view">
     <!-- Shown only once the session has ended. -->
     <SessionBanner />

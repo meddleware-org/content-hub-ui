@@ -315,7 +315,6 @@ const problemFor = (id: number) => problems.value.find((p) => p.target_id === id
 </script>
 
 <template>
-  <!-- The composer: notices, the editor and the previews side by side, the instances and the saved posts. -->
   <div class="composer">
     <!-- A failure or a refusal, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />

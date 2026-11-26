@@ -25,7 +25,6 @@ function toggle(id: number, on: boolean) {
 </script>
 
 <template>
-  <!-- A native fieldset groups the choices; its legend names the group. -->
   <fieldset class="targets">
     <!-- The group's name for assistive technology. -->
     <legend>Publish to</legend>

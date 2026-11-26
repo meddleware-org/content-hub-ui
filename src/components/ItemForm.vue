@@ -26,7 +26,6 @@ const STATUS_OPTIONS = ITEM_STATUS_VALUES.map((s) => [s, humanize(s)] as const)
 </script>
 
 <template>
-  <!-- The phase the item belongs to. -->
   <UiSelectField id="if-phase" v-model="form.phase_id" label="Phase" :options="phaseOptions" />
   <!-- The stable key. -->
   <UiTextField id="if-key" v-model="form.key" label="Key" hint="Lower-case letters, digits and hyphens." />

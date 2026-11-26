@@ -62,7 +62,6 @@ const resultUrl = (url: string | null) => (url && /^https:\/\//.test(url) ? url 
 </script>
 
 <template>
-  <!-- The instance's panel, named by its id, post and target. -->
   <UiPanel :title="`Instance #${detail.instance.id}: ${title} on ${target}`" :level="3">
     <p>
       <!-- The state in words, with a tone as reinforcement. -->

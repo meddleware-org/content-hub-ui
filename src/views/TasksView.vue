@@ -171,7 +171,6 @@ const LINK_KINDS = [['external', 'A web page'], ['post', 'A post'], ['platform_i
 </script>
 
 <template>
-  <!-- The tasks: notices, the list and the open task. -->
   <div class="tasks">
     <!-- A failed request, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />

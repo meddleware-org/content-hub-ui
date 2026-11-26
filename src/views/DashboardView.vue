@@ -94,7 +94,6 @@ const targetName = (id: number) => c.reference.value?.targets.find((t) => t.id =
 </script>
 
 <template>
-  <!-- The dashboard: a bar, the count panels, the schedule and the spend. -->
   <div class="dashboard">
     <!-- A note on when the numbers were read, and the refresh button. -->
     <p class="bar">

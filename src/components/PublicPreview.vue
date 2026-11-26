@@ -19,7 +19,6 @@ const c = useConsole()
 </script>
 
 <template>
-  <!-- Says which public document this is and that internal wording never appears in it. -->
   <UiNotice>
     This is the public document for {{ audience === 'human' ? 'people (/public/v1/roadmap)' : 'bots (/public/v1/roadmap-bot)' }}, produced by the same code the public site uses. Internal names, descriptions and dates never appear in it.
   </UiNotice>

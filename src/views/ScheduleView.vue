@@ -98,7 +98,6 @@ const LOOK_AHEAD = [['7', '7 days'], ['14', '14 days'], ['30', '30 days'], ['90'
 </script>
 
 <template>
-  <!-- The schedule: notice, controls and the list or calendar. -->
   <div class="schedule">
     <!-- A failed read, in words. -->
     <UiNotice v-if="error" type="error" :message="error" />
