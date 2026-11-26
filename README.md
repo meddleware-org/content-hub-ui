@@ -37,6 +37,8 @@ for embedding. Backend: [content-hub-service](https://github.com/meddleware-org/
 
 ## Development
 
+How to run the checks and propose a change: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ```bash
 npm ci
 npm run dev            # http://localhost:5173, /api proxied to a local `content-hub admin` on :8080

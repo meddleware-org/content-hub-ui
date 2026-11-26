@@ -2,30 +2,40 @@
 // before/after lists turned into sentences. The server enforces the caps and the instance ceilings; these helpers
 // only explain them.
 
+// The response shapes.
 import type { Budgets, PlatformDefinition, PlatformTarget, SpendCap } from '../api/types.js'
+// Formats micro-USD as a dollar amount.
 import { formatUsd } from '@meddleware/web-utils'
 
 /** The share of a cap used, as a whole percent (a cap of 0 with any use is 100). */
 export function percent(used: number, cap: number): number {
+  // Nothing used: no share.
   if (used <= 0) return 0
+  // A cap of zero with any use counts as fully used.
   if (cap <= 0) return 100
+  // A whole percent, never above 100.
   return Math.min(100, Math.floor((used * 100) / cap))
 }
 
 /** The alert level the service reports at: 0, 50, 80 or 100. */
 export function level(used: number, cap: number): 0 | 50 | 80 | 100 {
+  // The share used, then the highest alert level it has reached.
   const p = percent(used, cap)
   return p >= 100 ? 100 : p >= 80 ? 80 : p >= 50 ? 50 : 0
 }
 
+/** A cap's identity: its scope and the platform and target it names. */
 export type CapKey = string
 
+/** Build the key for a scope, platform and target. */
 export const capKey = (scope: SpendCap['scope'], platformId: number | null, targetId: number | null): CapKey =>
   `${scope}:${platformId ?? ''}:${targetId ?? ''}`
 
+/** The key of a cap row. */
 const keyOf = (c: Pick<SpendCap, 'scope' | 'platform_definition_id' | 'platform_target_id'>) =>
   capKey(c.scope, c.platform_definition_id, c.platform_target_id)
 
+/** One row of the budgets table: what it covers, usage, the cap that applies and the alert level. */
 export interface Row {
   key: CapKey
   scope: SpendCap['scope']
@@ -43,26 +53,43 @@ export interface Row {
 
 /** The rows of the budgets table: the total, every platform that is enabled or has spend or a cap, and target caps. */
 export function rows(b: Budgets, defs: PlatformDefinition[], targets: PlatformTarget[]): Row[] {
+  // The caps by scope and id, for lookups.
   const byKey = new Map(b.caps.map((c) => [keyOf(c), c]))
+  // This month's usage per platform.
   const used = new Map(b.usage.map((u) => [u.platform_definition_id, u.used_usd_micros]))
+  // The total across platforms.
   const totalUsed = [...used.values()].reduce((n, x) => n + x, 0)
+  // The fixed ceiling on the total, from the service's own configuration.
   const totalCeiling = b.ceilings.total_monthly_usd_micros
+  // A platform's ceiling can never exceed the total's.
   const platformCeiling = Math.min(b.ceilings.per_platform_monthly_usd_micros, totalCeiling)
+  // The table's rows, in order: the total, the platforms, then target caps.
   const out: Row[] = []
 
+  // The total's cap row, if one was set.
   const totalRow = byKey.get(capKey('total', null, null)) ?? null
+  // The cap that applies: the row's limit, else the ceiling, never above the ceiling.
   const totalCap = Math.min(totalRow?.monthly_limit_usd_micros ?? totalCeiling, totalCeiling)
+  // The total row.
   out.push({ key: capKey('total', null, null), scope: 'total', label: 'All platforms together', platformId: null, targetId: null, used: totalUsed, cap: totalCap, row: totalRow, level: level(totalUsed, totalCap) })
 
+  // One row per platform that is enabled or has spend or a cap.
   for (const d of defs) {
+    // This platform's cap row, if one was set.
     const r = byKey.get(capKey('platform', d.id, null)) ?? null
+    // Its usage this month.
     const u = used.get(d.id) ?? 0
+    // A disabled platform with nothing on it would only add noise.
     if (!d.enabled && !r && u === 0) continue
+    // The cap that applies, never above the platform ceiling.
     const cap = Math.min(r?.monthly_limit_usd_micros ?? platformCeiling, platformCeiling)
     out.push({ key: capKey('platform', d.id, null), scope: 'platform', label: d.name, platformId: d.id, targetId: null, used: u, cap, row: r, level: level(u, cap) })
   }
+  // Then each target-level cap.
   for (const c of b.caps.filter((x) => x.scope === 'target')) {
+    // The target the cap names (it may have been removed).
     const t = targets.find((x) => x.id === c.platform_target_id)
+    // A target's usage is read from its platform (the service reports usage per platform).
     const u = used.get(t?.platform_definition_id ?? -1) ?? 0
     const cap = Math.min(c.monthly_limit_usd_micros, platformCeiling)
     out.push({ key: keyOf(c), scope: 'target', label: `${t?.name ?? `target #${c.platform_target_id}`} (${t?.platform_code ?? 'unknown platform'}, one target)`, platformId: null, targetId: c.platform_target_id, used: u, cap, row: c, level: level(u, cap) })
@@ -78,18 +105,26 @@ export const LEVEL_TEXT: Record<0 | 50 | 80 | 100, string> = {
   100: 'cap reached: further paid posts are handed to a person',
 }
 
+// A runtime check that a value from the audit trail is a cap row; the trail's JSON is untrusted.
 const isCap = (v: unknown): v is SpendCap => typeof v === 'object' && v !== null && 'scope' in v && 'monthly_limit_usd_micros' in v
+// The caps in a before/after value, or none when it is not a list.
 const asCaps = (v: unknown): SpendCap[] => (Array.isArray(v) ? v.filter(isCap) : [])
 
 /** The changes between two cap lists, as sentences. */
 export function describeChange(before: unknown, after: unknown, name: (c: SpendCap) => string): string[] {
+  // The caps before and after, by scope and id.
   const b = new Map(asCaps(before).map((c) => [keyOf(c), c]))
   const a = new Map(asCaps(after).map((c) => [keyOf(c), c]))
+  // The sentences to show.
   const lines: string[] = []
+  // Every cap now present is either new or changed.
   for (const [k, n] of a) {
     const o = b.get(k)
+    // How a cap's daily limit reads.
     const daily = (c: SpendCap) => (c.daily_post_limit === null ? 'no daily limit' : `${c.daily_post_limit} posts a day`)
+    // A cap that did not exist before.
     if (!o) lines.push(`${name(n)}: set to ${formatUsd(n.monthly_limit_usd_micros)} a month, ${daily(n)}`)
+    // A cap whose monthly or daily limit changed: say what changed.
     else if (o.monthly_limit_usd_micros !== n.monthly_limit_usd_micros || o.daily_post_limit !== n.daily_post_limit) {
       const parts: string[] = []
       if (o.monthly_limit_usd_micros !== n.monthly_limit_usd_micros) parts.push(`${formatUsd(o.monthly_limit_usd_micros)} → ${formatUsd(n.monthly_limit_usd_micros)} a month`)
@@ -97,6 +132,7 @@ export function describeChange(before: unknown, after: unknown, name: (c: SpendC
       lines.push(`${name(n)}: ${parts.join(', ')}`)
     }
   }
+  // A cap that no longer exists was removed.
   for (const [k, o] of b) if (!a.has(k)) lines.push(`${name(o)}: removed`)
   return lines
 }

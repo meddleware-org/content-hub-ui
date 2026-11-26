@@ -30,5 +30,7 @@ export async function open(page: Page, api = new FakeApi(), requested: 'html' | 
   return { api, problems }
 }
 
+/** The console's section names, in tab order. */
 export const SECTIONS = ['Dashboard', 'Roadmap', 'Tasks', 'Composer', 'Publishing', 'Schedule', 'Budgets'] as const
+/** The tab with exactly this name. */
 export const tab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true })

@@ -31,6 +31,7 @@ import type {
   TaskLink,
 } from '../../src/api/types.js'
 
+/** One request the fake received, for tests to inspect: method, path, query, body and whether it carried the CSRF header. */
 export interface Call {
   method: string
   path: string
@@ -39,6 +40,7 @@ export interface Call {
   csrf: boolean
 }
 
+/** What the fake answers: a status with JSON or HTML (HTML stands for the sign-in page served in place of JSON). */
 export interface FakeReply {
   status: number
   /** JSON body (omitted for 204). */
@@ -48,11 +50,15 @@ export interface FakeReply {
 }
 
 // Request bodies are whatever the console sent; the fake reads them loosely, as a server would parse JSON.
+/** A request body: untyped JSON, because the fake reads whatever the console sends. */
 type Body = Record<string, any>
 
+// A fixed "now", so the data (and the schedule built from it) is the same on every run.
 const NOW = '2026-10-29T12:00:00Z'
+// A pass-through that keeps a literal typed as plain JSON.
 const uc = (d: Record<string, unknown>) => d
 
+/** A platform definition with defaults, overridden by `over`. */
 function def(id: number, code: string, name: string, over: Record<string, unknown>): PlatformDefinition {
   return {
     id, code, name, category: 'social', posting_mode: 'api', counting_method: null, primary_limit: null,
@@ -61,6 +67,7 @@ function def(id: number, code: string, name: string, over: Record<string, unknow
   } as PlatformDefinition
 }
 
+/** A target on a platform, with defaults, overridden by `over`. */
 function target(id: number, d: PlatformDefinition, name: string, over: Record<string, unknown> = {}): PlatformTarget {
   return {
     id, platform_definition_id: d.id, platform_code: d.code, name, external_ref: null, config: {}, secret_ref: null,
@@ -68,13 +75,20 @@ function target(id: number, d: PlatformDefinition, name: string, over: Record<st
   } as PlatformTarget
 }
 
+/** An in-memory admin API: realistic data, the server's state machines and limits, the CSRF check and an ended session. */
 export class FakeApi {
+  // The signed-in person.
   me: Me = { subject: 'operator-1', display_name: 'op@example.org' }
+  // True once the session has ended.
   expired = false
+  // Every request received, in order.
   calls: Call[] = []
+  // The stop switch.
   paused = false
+  // Ids for new rows start well above the seed data's.
   nextId = 100
 
+  // The data the fake holds: platforms, targets, phases, items, tasks, posts, instances and their detail.
   definitions: PlatformDefinition[]
   targets: PlatformTarget[]
   phases: Phase[]
@@ -86,6 +100,7 @@ export class FakeApi {
   attempts = new Map<number, Attempt[]>()
   caps: SpendCap[] = []
   audit: AuditEntry[] = []
+  // The fixed spend ceilings.
   ceilings = { total_monthly_usd_micros: 5_000_000, per_platform_monthly_usd_micros: 2_000_000 }
 
   constructor() {
@@ -136,6 +151,7 @@ export class FakeApi {
     ])
   }
 
+  /** End the session: from now on every request gets the sign-in page. */
   expire(): void {
     this.expired = true
   }
@@ -150,34 +166,46 @@ export class FakeApi {
     return new Response(r.status === 204 ? null : JSON.stringify(r.json ?? null), { status: r.status, headers: { 'content-type': 'application/json' } })
   }
 
+  /** Answer one request: record it, apply the session and CSRF rules, then route it. */
   respond(method: string, pathAndQuery: string, headers: Record<string, string>, bodyText?: string): FakeReply {
     const url = new URL(pathAndQuery, 'http://localhost')
     const query = Object.fromEntries(url.searchParams.entries())
     const body = bodyText ? (JSON.parse(bodyText) as unknown) : undefined
     const path = url.pathname.replace(/^\/api\/v1/, '')
     const csrf = Object.keys(headers).some((h) => h.toLowerCase() === CSRF_HEADER.toLowerCase())
+    // Record the call before answering, so a test can inspect even refused ones.
     this.calls.push({ method, path, query, body, csrf })
+    // An ended session answers every request with the sign-in page.
     if (this.expired) return { status: 200, html: '<!doctype html><title>Sign in</title>' }
+    // A write without the CSRF header is refused, as the real service does.
     if (method !== 'GET' && !csrf) return err(403, 'forbidden', 'missing the CSRF header')
     return this.route(method, path, query, body)
   }
 
+  /** The recorded calls to a method and path. */
   callsTo(method: string, path: string): Call[] {
     return this.calls.filter((c) => c.method === method && c.path === path)
   }
 
+  /** The next fresh id. */
   private id(): number {
     return this.nextId++
   }
 
   // ── routes ──────────────────────────────────────────────────────────────────────────────────────────────
+  /** The route table: each admin route the console uses, answered from the in-memory data. */
   private route(method: string, path: string, query: Record<string, string>, body: unknown): FakeReply {
+    // The request body, or an empty object.
     const b = (body ?? {}) as Body
+    // Match the path against a pattern.
     const m = (re: RegExp) => re.exec(path)
+    // The last pattern match, for the id in the path.
     let g: RegExpExecArray | null
+    // Who is signed in.
     if (method === 'GET' && path === '/me') return ok(this.me)
     if (method === 'GET' && path === '/platforms') return ok(this.definitions)
     if (method === 'GET' && path === '/targets') return ok(this.targets)
+    // Creating a target: the platform must exist, and the credential reference must be a variable NAME with the platform prefix.
     if (method === 'POST' && path === '/targets') {
       const d = this.definitions.find((x) => x.id === b.platform_definition_id)
       if (!d) return err(404, 'not_found', 'not found')
@@ -186,17 +214,20 @@ export class FakeApi {
       this.targets.push(t)
       return ok(t, 201)
     }
+    // Changing a target.
     if ((g = m(/^\/targets\/(\d+)$/)) && method === 'PATCH') {
       const t = this.targets.find((x) => x.id === +g![1]!)
       if (!t) return err(404, 'not_found', 'not found')
       Object.assign(t, b)
       return ok(t)
     }
+    // The stop switch.
     if (method === 'GET' && path === '/publishing') return ok({ paused: this.paused })
     if (method === 'PUT' && path === '/publishing') {
       this.paused = !!b.paused
       return ok({ paused: this.paused })
     }
+    // The dashboard's counts.
     if (method === 'GET' && path === '/stats') return ok(this.stats())
     if (method === 'GET' && path === '/schedule') {
       return ok({ instances: this.instances.filter((i) => i.status === 'queued'), reviews_due: this.tasks.filter((t) => t.next_review_at) })
@@ -417,13 +448,16 @@ export class FakeApi {
   }
 }
 
+/** A success reply. */
 const ok = (json: unknown, status = 200): FakeReply => ({ status, json })
+/** An error reply in the service's shape. */
 const err = (status: number, error: string, message: string, extra: Record<string, unknown> = {}): FakeReply => ({
   status,
   json: uc({ error, message, ...extra }),
 })
 
 /** One page of rows by an offset cursor (`c<n>`), newest first as the caller sorted them. */
+/** One cursor page of `rows`, as the API pages them (the cursor is a position). */
 function page<T>(rows: T[], query: Record<string, string>) {
   const limit = Math.min(Math.max(Number(query.limit ?? 50) || 50, 1), 100)
   const start = query.cursor ? Number(query.cursor.slice(1)) || 0 : 0

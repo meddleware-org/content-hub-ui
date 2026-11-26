@@ -1,3 +1,4 @@
+// Tests of the pure libraries: budget levels and rows, unsent drafts, composer previews and shortening, status words, and the roadmap forms. No component and no network.
 import { describe, expect, it } from 'vitest'
 import type { Budgets, PlatformDefinition, PlatformTarget, SpendCap } from '../src/api/types.js'
 import { describeChange, level, percent, rows } from '../src/lib/budgets.js'
@@ -8,6 +9,7 @@ import { statusLabel, statusTone } from '../src/lib/status.js'
 import { FakeApi } from './support/fake-api.js'
 
 describe('budget levels', () => {
+  // Levels follow the service: 50, 80 and 100 percent.
   it('levels follow the service: 50, 80 and 100 percent', () => {
     expect([level(0, 100), level(49, 100), level(50, 100), level(79, 100), level(80, 100), level(100, 100), level(150, 100)]).toEqual([0, 0, 50, 50, 80, 100, 100])
     expect(level(1, 0)).toBe(100)
@@ -19,6 +21,7 @@ describe('budget levels', () => {
 describe('unsent drafts', () => {
   const good = { title: 'T', body: 'B', targets: [1, 2], overrides: { '2': { body: 'short' } }, postId: 7, savedAt: '2026-10-29T12:00:00Z' }
 
+  // Round-trips through storage.
   it('round-trips through storage', () => {
     const store = new Map<string, string>()
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) }
@@ -28,6 +31,7 @@ describe('unsent drafts', () => {
     expect(loadDraft(storage)).toBeNull()
   })
 
+  // Distrusts what it finds.
   it('distrusts what it finds', () => {
     expect(parseDraft(null)).toBeNull()
     for (const bad of ['{', '[]', '"x"', JSON.stringify({ ...good, title: 5 }), JSON.stringify({ ...good, body: 'x'.repeat(100_001) }), JSON.stringify({ title: 'T' })]) {
@@ -39,6 +43,7 @@ describe('unsent drafts', () => {
     expect(tampered?.postId).toBeNull()
   })
 
+  // Never throws when storage is unavailable.
   it('never throws when storage is unavailable', () => {
     const broken = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('full') }, removeItem: () => { throw new Error('blocked') } }
     expect(loadDraft(broken)).toBeNull()
@@ -51,6 +56,7 @@ describe('unsent drafts', () => {
 })
 
 // ── spend caps ──────────────────────────────────────────────────────────────────────────────────────────────
+/** A budgets response with the test ceilings, overridden by `over`. */
 function budgets(over: Partial<Budgets> = {}): Budgets {
   return { ceilings: { total_monthly_usd_micros: 5_000_000, per_platform_monthly_usd_micros: 2_000_000 }, caps: [], usage: [], ...over }
 }
@@ -61,6 +67,7 @@ describe('budget rows and the audit trail', () => {
   const defs = api.definitions as PlatformDefinition[]
   const targets = api.targets as PlatformTarget[]
 
+  // Shows the cap that applies: the runtime row, else the ceiling.
   it('shows the cap that applies: the runtime row, else the ceiling', () => {
     const r = rows(budgets({ caps: [cap({ monthly_limit_usd_micros: 500_000 })], usage: [{ platform_definition_id: 4, used_usd_micros: 400_000 }] }), defs, targets)
     expect(r[0]!.label).toBe('All platforms together')
@@ -72,11 +79,13 @@ describe('budget rows and the audit trail', () => {
     expect([mastodon.cap, mastodon.row]).toEqual([2_000_000, null]) // per-platform ceiling, no row
   })
 
+  // Never lets a stored cap look larger than the ceiling.
   it('never lets a stored cap look larger than the ceiling', () => {
     const r = rows(budgets({ caps: [cap({ monthly_limit_usd_micros: 9_000_000 })] }), defs, targets)
     expect(r.find((row) => row.platformId === 4)!.cap).toBe(2_000_000)
   })
 
+  // Describes changes as sentences.
   it('describes changes as sentences', () => {
     const name = (c: SpendCap) => (c.scope === 'total' ? 'All' : `platform ${c.platform_definition_id}`)
     expect(describeChange([], [cap({})], name)).toEqual(['platform 4: set to $1.00 a month, no daily limit'])
@@ -97,6 +106,7 @@ describe('composer previews', () => {
     return { d, t: api.targets.find((x) => x.platform_definition_id === d.id)! }
   }
 
+  // Counts each platform in its own unit and says whether it fits.
   it('counts each platform in its own unit and says whether it fits', () => {
     const { d, t } = byCode('BLUESKY')
     const ok = preview(t, d, 'T', 'a'.repeat(300))
@@ -110,6 +120,7 @@ describe('composer previews', () => {
     expect(preview(t, d, 'T', '😀'.repeat(250)).fits).toBe(true)
   })
 
+  // Weights links on X and applies the instance limits cached on a Mastodon target.
   it('weights links on X and applies the instance limits cached on a Mastodon target', () => {
     const x = byCode('X')
     expect(preview(x.t, x.d, 'T', 'see https://example.org/a/very/long/path?with=query').check!.counted).toBe(4 + 23)
@@ -119,6 +130,7 @@ describe('composer previews', () => {
     expect([p.check!.counted, p.check!.limit, p.fits]).toEqual([34, 20, false])
   })
 
+  // Estimates cost, with the price of a link where the platform has one.
   it('estimates cost, with the price of a link where the platform has one', () => {
     const x = byCode('X')
     expect(preview(x.t, x.d, 'T', 'no link').costMicros).toBe(15_000)
@@ -128,6 +140,7 @@ describe('composer previews', () => {
     expect(costOf({}, true)).toBe(0)
   })
 
+  // Uses an override instead of the shared text, with line endings normalised.
   it('uses an override instead of the shared text, with line endings normalised', () => {
     const { d, t } = byCode('BLUESKY')
     const p = preview(t, d, 'Shared', 'a'.repeat(400), { body: 'short\r\ntext', title: 'Own title' })
@@ -135,6 +148,7 @@ describe('composer previews', () => {
     expect(normalise('a\r\nb\rc')).toBe('a\nb\nc')
   })
 
+  // Segments the shared text across the targets that use it.
   it('segments the shared text across the targets that use it', () => {
     const b = byCode('BLUESKY')
     const x = byCode('X')
@@ -147,6 +161,7 @@ describe('composer previews', () => {
     expect(bands(withOverride, 'a'.repeat(500)).bands.map((s) => [s.start, s.end, s.fits.length])).toEqual([[0, 280, 1], [280, 500, 0]])
   })
 
+  // Shortens text with an ellipsis and a link so the result itself fits.
   it('shortens text with an ellipsis and a link so the result itself fits', () => {
     const { d, t } = byCode('BLUESKY')
     const limits = preview(t, d, 'T', '').limits!
@@ -160,6 +175,7 @@ describe('composer previews', () => {
     expect(truncateWithLink('x', 'https://example.org/' + 'a'.repeat(400), 'plain', limits)).toBeNull()
   })
 
+  // Never cuts inside a link.
   it('never cuts inside a link', () => {
     const { d, t } = byCode('BLUESKY')
     const limits = { ...preview(t, d, 'T', '').limits!, primary: 60 }
@@ -169,6 +185,7 @@ describe('composer previews', () => {
 })
 
 describe('status words and tones', () => {
+  // Says a status in words, with the tone the badge shows it in.
   it('says a status in words, with the tone the badge shows it in', () => {
     expect(statusLabel('in_progress')).toBe('in progress')
     expect(statusLabel('manual_required')).toBe('manual')
@@ -179,6 +196,7 @@ describe('status words and tones', () => {
 
 describe('roadmap forms', () => {
   const phase = { id: 1, key: 'p1', sort_order: 2, internal_name: 'Internal', internal_description: 'd', public_name: 'Public', public_description: 'pd', window_start: null, window_end: '2027-01-01T00:00:00Z', visible_human: true, visible_bot: false } as never
+  // Fills a form from a stored phase and makes the request body from the form.
   it('fills a form from a stored phase and makes the request body from the form', () => {
     const f = phaseFields(phase)
     expect(f).toMatchObject({ key: 'p1', sort_order: '2', internal_name: 'Internal', window_end: '2027-01-01T00:00:00Z' })

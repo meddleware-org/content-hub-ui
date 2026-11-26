@@ -30,6 +30,7 @@ if [ -z "$engine" ]; then
   fi
 fi
 
+# fail <message>: print the failure and stop (the EXIT trap still removes the container).
 fail() {
   echo "smoke test FAILED: $*" >&2
   exit 1
@@ -60,6 +61,7 @@ require_header() {
   v="$(header "$1")"
   [[ "$v" =~ $2 ]] || fail "$3 $4: header $1 is '${v}', want match for $2"
 }
+# security_headers <method> <path>: every response, whatever its status, carries the fixed security headers and a CSP without inline scripts.
 security_headers() { # <method> <path>
   require_header X-Content-Type-Options '^nosniff$' "$1" "$2"
   require_header X-Frame-Options '^SAMEORIGIN$' "$1" "$2"

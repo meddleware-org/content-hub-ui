@@ -1,11 +1,17 @@
+// Reads the Dockerfile to take its Content-Security-Policy.
 import { readFileSync } from 'node:fs'
+// Vite's typed configuration helper, and `loadEnv` to read the brand name at config time.
 import { defineConfig, loadEnv } from 'vite'
+// The Vue single-file-component plugin.
 import vue from '@vitejs/plugin-vue'
+// The fleet's shared application settings.
 import { meddlewareApp } from '@meddleware/frontend-config/vite'
 
-// The Content-Security-Policy the production image sends (Dockerfile `ARG CSP`). `vite preview` sends the same one,
-// so the browser tests run under the real policy and a violation fails them. `upgrade-insecure-requests` is left
-// out only because the preview server speaks plain http on localhost.
+/**
+ * The Content-Security-Policy the production image sends (Dockerfile `ARG CSP`). `vite preview` sends the same one,
+ * so the browser tests run under the real policy and a violation fails them. `upgrade-insecure-requests` is left
+ * out only because the preview server speaks plain http on localhost.
+ */
 function imageCsp(): string | undefined {
   try {
     const m = /^ARG CSP="([^"]+)"/m.exec(readFileSync(new URL('./Dockerfile', import.meta.url), 'utf8'))
@@ -14,6 +20,7 @@ function imageCsp(): string | undefined {
     return undefined
   }
 }
+// The policy, or undefined where the Dockerfile cannot be read.
 const csp = imageCsp()
 
 // The admin API is same-origin in production (the ingress routes /api/ on the admin host to the admin

@@ -1,3 +1,5 @@
+// Tests that the console's sections, tabs and panels line up (src/sections.ts against ContentHubView): every section has a tab and opens its own view, and the segmented
+// controls change views. Uses the same fake admin API as the other component tests. Related: tests/support/mount.ts.
 import { afterEach, describe, expect, it } from 'vitest'
 import { SECTIONS } from '../src/sections.js'
 import { mountConsole, openTab, segment, type Harness } from './support/mount.js'
@@ -9,12 +11,14 @@ afterEach(() => {
 })
 
 describe('ContentHubView', () => {
+  // Offers every section as a tab and shows the first.
   it('offers every section as a tab and shows the first', async () => {
     h = await mountConsole()
     expect(h.w.findAll('[role="tab"]').map((t) => t.text())).toEqual(SECTIONS.map((s) => s.label))
     expect(h.w.find('h2').text()).toBe(SECTIONS[0]!.label)
   })
 
+  // Switches the visible section with the tab.
   it('switches the visible section with the tab', async () => {
     h = await mountConsole()
     await openTab(h, 'Budgets')
@@ -22,12 +26,14 @@ describe('ContentHubView', () => {
     expect(h.w.findAll('h2')).toHaveLength(1)
   })
 
+  // Renders section text as text, never as markup.
   it('renders section text as text, never as markup', async () => {
     h = await mountConsole()
     expect(h.w.html()).not.toContain('v-html')
     expect(h.w.find('p.section-summary').element.innerHTML).toBe(SECTIONS[0]!.summary)
   })
 
+  // Builds every table soundly: no row inside a row, and every row has one cell per header.
   it('builds every table soundly: no row inside a row, and every row has one cell per header', async () => {
     // A `<tr>` passed into the library table's `head` slot (which already wraps one) nests a row in a row: the header then
     // collapses into the first column and nothing lines up. No other test sees it, only a screenshot did.

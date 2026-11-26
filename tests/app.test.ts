@@ -8,6 +8,7 @@ vi.mock('../src/ContentHubView.vue', () => ({ default: { template: '<p class="vi
 const { default: App } = await import('../src/App.vue')
 
 describe('App', () => {
+  // Shows the company mark beside the brand name in the header, hidden from assistive technology.
   it('shows the company mark beside the brand name in the header, hidden from assistive technology', () => {
     const header = mount(App).get('header')
     const mark = header.get('svg.mw-brand-mark')
@@ -15,6 +16,7 @@ describe('App', () => {
     expect(header.text()).toContain('Content hub')
   })
 
+  // Has one page heading, the console and the copyright line, and no documentation link by default.
   it('has one page heading, the console and the copyright line, and no documentation link by default', () => {
     const w = mount(App)
     expect(w.findAll('h1').map((h) => h.text())).toEqual(['Content hub'])
@@ -24,6 +26,7 @@ describe('App', () => {
     expect(w.find('footer a[href*="meddleware.dev"]').exists()).toBe(false)
   })
 
+  // Stays full width: the main region is not limited to the tool width.
   it('stays full width: the main region is not limited to the tool width', () => {
     const main = mount(App).get('main')
     expect(main.classes()).toContain('mw-shell__main')
@@ -32,6 +35,7 @@ describe('App', () => {
 })
 
 describe('the brand', () => {
+  // Keeps no icon of its own: the favicon set comes from the shared brand icons.
   it('keeps no icon of its own: the favicon set comes from the shared brand icons', () => {
     expect(existsSync('public/favicon.svg')).toBe(false)
     expect(readdirSync('public').filter((f) => /favicon|apple-touch|icon-/.test(f))).toEqual([])

@@ -1,2 +1,7 @@
+# robots.txt for the admin console. This host is a private console behind a sign-in, so no crawler has any business here:
+# nothing on it is public, and the rule below asks every well-behaved crawler to stay out. It is a request, not protection;
+# the sign-in is what keeps strangers out.
+# Every crawler.
 User-agent: *
+# Nothing may be fetched.
 Disallow: /

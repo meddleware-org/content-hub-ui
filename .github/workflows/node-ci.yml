@@ -1,3 +1,5 @@
+# Continuous integration for content-hub-ui: static checks and unit tests, the production build and what must hold of it, the browser tests on five
+# browsers, a container build and probe, and a file-system scan. The release workflows call this one, so a tag runs exactly the same checks.
 name: Node CI
 
 on:
@@ -8,62 +10,80 @@ on:
   # The release workflow runs the same checks on the tagged commit.
   workflow_call:
 
+# DO_NOT_TRACK asks the tools run here not to send usage data.
 env:
   DO_NOT_TRACK: "1"
 
+# Read-only: no job here writes to the repository.
 permissions:
   contents: read
 
+# Independent jobs; the later ones that need a build wait for the first.
 jobs:
+  # The production build and the checks that need it.
   build:
     name: Type-check and build
     runs-on: ubuntu-latest
 
     steps:
+      # Actions are pinned to a commit hash, with the version as a comment so Dependabot can update both.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Node 26, the fleet baseline.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
 
+      # A clean install from the lock file.
       - name: Install dependencies
         run: npm ci
 
+      # The npm advisory check, against the repository's allow-list (.github/audit-allowlist.json); it complements the Trivy scan below.
       - name: Audit dependencies
         run: npx mw-audit-gate
 
+      # The files synced from @meddleware/frontend-config (dependabot, postcss, stylelint, the Dockerfile CSP and others) must equal the templates.
       - name: Shared files are current
         run: npx mw-sync --check
 
+      # vue-tsc over the sources.
       - name: Type-check
         run: npm run type-check
 
+      # Stylelint over the stylesheets.
       - name: Lint CSS (stylelint)
         run: npm run lint:css
 
+      # ESLint with the accessibility and browser-compatibility rules.
       - name: Lint JS (eslint + vuejs-a11y)
         run: npm run lint:js
 
+      # html-validate over the pages.
       - name: Lint HTML (html-validate)
         run: npm run lint:html
 
+      # The component tests.
       - name: Unit tests
         run: npm test
 
+      # vite build into dist/.
       - name: Build
         run: npm run build
 
       - name: No test support in the built files
         run: npm run check:dist
 
+      # The built pages carry the icon set once and load nothing from a third party (tests/dist.test.ts; REQUIRE_DIST makes a missing dist/ a failure).
       - name: Built site (icon set once, no third-party loads)
         run: npx vitest run tests/dist.test.ts
         env:
           REQUIRE_DIST: '1'
 
+      # The licence notices file is produced and not empty.
       - name: Third-party licence notices
         run: npm run check:licenses && test -s dist/THIRD_PARTY_LICENSES
 
+      # Accessibility 100, best-practices and bundle-size budgets.
       - name: Lighthouse (accessibility 100, best practices, bundle budgets)
         run: npx lhci autorun
 
@@ -78,6 +98,7 @@ jobs:
       - id: v
         run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
 
+  # Browser tests.
   e2e:
     name: Browser tests (${{ matrix.project }})
     needs: playwright
@@ -87,6 +108,7 @@ jobs:
     # the locked version (the same browser builds, their system libraries installed), so none downloads browsers or
     # apt packages.
     container:
+      # The container image is built and probed as the cluster runs it; it is not pushed from here.
       image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-resolute
       # Chromium's recommended shared-memory setting for containers.
       options: --ipc=host
@@ -107,6 +129,7 @@ jobs:
       # A bare runner gives sans-serif, serif, monospace and system-ui to DejaVu (Ubuntu's fonts-dejavu-core 2.37), and the
       # layout checks (reflow at 320 px, 200 % text, target sizes) were written against it. Playwright's image has no DejaVu,
       # and its CJK font would take those names. So: the same release from upstream (checksum pinned), preferred for them.
+      # The layout checks were written against the Ubuntu runner's fonts; Playwright's image lacks them, so the same release is installed from upstream with its checksum pinned.
       - name: The runner's fonts (DejaVu 2.37)
         run: |
           curl -fsSL -o /tmp/dejavu.tar.bz2 https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2

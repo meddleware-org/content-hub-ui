@@ -1,3 +1,5 @@
+// Component tests of the whole console (ContentHubView) against the fake admin API: the shell and the end of a session, then each section's behaviour (dashboard, roadmap, tasks, publishing,
+// budgets, schedule, composer). Every state-changing request must carry the CSRF header (checked after each test). Related: tests/support/ (the fake API and the mount helpers).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TASK_STATUS_VALUES, taskMoveAllowed } from '@meddleware/content-hub-client'
 import { DRAFT_KEY } from '../src/lib/drafts.js'
@@ -13,6 +15,7 @@ afterEach(() => {
 })
 
 describe('the shell', () => {
+  // Shows who is signed in, how to sign out, and every section.
   it('shows who is signed in, how to sign out, and every section', async () => {
     h = await mountConsole()
     expect(h.w.text()).toContain('Signed in as op@example.org')
@@ -22,6 +25,7 @@ describe('the shell', () => {
     expect(h.api.calls.every((c) => typeof c.path === 'string')).toBe(true)
   })
 
+  // Offers to sign in again when the session ends, and keeps the page otherwise intact.
   it('offers to sign in again when the session ends, and keeps the page otherwise intact', async () => {
     h = await mountConsole()
     h.api.expire()
@@ -35,6 +39,7 @@ describe('the shell', () => {
     expect(button(h.w, 'Save draft').attributes('disabled')).toBeDefined()
   })
 
+  // Treats the sign-in page served in place of JSON as the session ending.
   it('treats the sign-in page served in place of JSON as the session ending', async () => {
     const api = new FakeApi()
     api.expire()
@@ -44,6 +49,7 @@ describe('the shell', () => {
 })
 
 describe('the dashboard', () => {
+  // Shows counts from the server and spend against caps.
   it('shows counts from the server and spend against caps', async () => {
     h = await mountConsole()
     const text = h.w.text()
@@ -57,6 +63,7 @@ describe('the dashboard', () => {
 })
 
 describe('the roadmap', () => {
+  // Previews exactly the public document, and keeps internal wording out of it.
   it('previews exactly the public document, and keeps internal wording out of it', async () => {
     h = await mountConsole()
     await openTab(h, 'Roadmap')
@@ -73,6 +80,7 @@ describe('the roadmap', () => {
     expect(panelText(h)).toContain('Nothing is public for this audience yet.')
   })
 
+  // Edits an item and shows the server\.
   it('edits an item and shows the server\'s refusal when a visible item has no public wording', async () => {
     h = await mountConsole()
     await openTab(h, 'Roadmap')
@@ -91,6 +99,7 @@ describe('the roadmap', () => {
 })
 
 describe('tasks', () => {
+  // Offers only the moves the server allows, and asks for a reason before blocking.
   it('offers only the moves the server allows, and asks for a reason before blocking', async () => {
     h = await mountConsole()
     await openTab(h, 'Tasks')
@@ -110,6 +119,7 @@ describe('tasks', () => {
     expect(panelText(h)).toContain('Blocked: waiting for the domain')
   })
 
+  // Attaches and detaches links.
   it('attaches and detaches links', async () => {
     h = await mountConsole()
     await openTab(h, 'Tasks')
@@ -123,6 +133,7 @@ describe('tasks', () => {
     expect(panelText(h)).toContain('No links.')
   })
 
+  // Filters by status and entity gating.
   it('filters by status and entity gating', async () => {
     h = await mountConsole()
     await openTab(h, 'Tasks')
@@ -135,6 +146,7 @@ describe('tasks', () => {
 })
 
 describe('publishing', () => {
+  // Marks a manual post as posted only with where it went.
   it('marks a manual post as posted only with where it went', async () => {
     h = await mountConsole()
     await openTab(h, 'Publishing')
@@ -149,6 +161,7 @@ describe('publishing', () => {
     expect(panelText(h)).toContain('Instance #1 is now posted')
   })
 
+  // Resolves an uncertain send either way and never offers an automatic retry.
   it('resolves an uncertain send either way and never offers an automatic retry', async () => {
     h = await mountConsole()
     await openTab(h, 'Publishing')
@@ -164,6 +177,7 @@ describe('publishing', () => {
     expect(panelText(h)).toContain('The request (credentials hidden)')
   })
 
+  // Stops and resumes all sending.
   it('stops and resumes all sending', async () => {
     h = await mountConsole()
     await openTab(h, 'Publishing')
@@ -175,6 +189,7 @@ describe('publishing', () => {
     expect(h.api.paused).toBe(false)
   })
 
+  // Asks before a target sends for real, and a refused credential name is explained.
   it('asks before a target sends for real, and a refused credential name is explained', async () => {
     h = await mountConsole()
     await openTab(h, 'Publishing')
@@ -201,6 +216,7 @@ describe('publishing', () => {
 })
 
 describe('budgets', () => {
+  // Saves a cap, refuses one above the instance ceiling, and lists the change.
   it('saves a cap, refuses one above the instance ceiling, and lists the change', async () => {
     h = await mountConsole()
     await openTab(h, 'Budgets')
@@ -224,6 +240,7 @@ describe('budgets', () => {
 })
 
 describe('the schedule', () => {
+  // Lists and draws what is scheduled, in the chosen time zone.
   it('lists and draws what is scheduled, in the chosen time zone', async () => {
     const api = new FakeApi()
     api.instances.push({ ...api.instances[0]!, id: 50, status: 'queued', platform_target_id: 2, scheduled_at: new Date().toISOString() })
@@ -241,6 +258,7 @@ describe('the schedule', () => {
 describe('the composer', () => {
   const long = 'word '.repeat(80) // 400 characters: over Bluesky (300), under Mastodon (500)
 
+  /** Tick the target checkboxes whose label starts with each name, then wait for the previews. */
   async function choose(h: Harness, ...names: string[]) {
     for (const n of names) {
       const box = h.w.findAll('.target-choice').find((l) => l.text().startsWith(n))!.find('input')
@@ -249,6 +267,7 @@ describe('the composer', () => {
     await settle()
   }
 
+  // Shows per platform how much fits, with words as well as colour, and blocks queueing while over.
   it('shows per platform how much fits, with words as well as colour, and blocks queueing while over', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -267,6 +286,7 @@ describe('the composer', () => {
     expect(text).toContain('Too long for bluesky test, brand on X')
   })
 
+  // Shortens a text with a link, counts the result, and queues each target with its own text.
   it('shortens a text with a link, counts the result, and queues each target with its own text', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -294,6 +314,7 @@ describe('the composer', () => {
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
   })
 
+  // Explains what the server refused for a target.
   it('explains what the server refused for a target', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -307,6 +328,7 @@ describe('the composer', () => {
     expect(panelText(h)).toContain('MASTODON does not fit')
   })
 
+  // Keeps an unsent draft through a reload and offers to discard it.
   it('keeps an unsent draft through a reload and offers to discard it', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -326,6 +348,7 @@ describe('the composer', () => {
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
   })
 
+  // Keeps the draft when the session ends mid-save.
   it('keeps the draft when the session ends mid-save', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -337,6 +360,7 @@ describe('the composer', () => {
     expect(JSON.parse(localStorage.getItem(DRAFT_KEY)!)).toMatchObject({ title: 'Important', body: 'Do not lose this' })
   })
 
+  // Renders a hostile post as text, never as markup or a live script link.
   it('renders a hostile post as text, never as markup or a live script link', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')
@@ -351,6 +375,7 @@ describe('the composer', () => {
     expect(rendered.find('strong').text()).toBe('ok')
   })
 
+  // Reopens a saved post with its instances.
   it('reopens a saved post with its instances', async () => {
     h = await mountConsole()
     await openTab(h, 'Composer')

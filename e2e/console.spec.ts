@@ -6,6 +6,7 @@ import { open, tab } from './open.js'
 
 const LONG = 'word '.repeat(80) // 400 characters
 
+// Every section opens without a page error, under the production CSP.
 test('every section opens without a page error, under the production CSP', async ({ page }) => {
   const { problems } = await open(page)
   for (const name of ['Dashboard', 'Roadmap', 'Tasks', 'Composer', 'Publishing', 'Schedule', 'Budgets']) {
@@ -15,6 +16,7 @@ test('every section opens without a page error, under the production CSP', async
   expect(problems).toEqual([])
 })
 
+// A session that ends mid-compose keeps the draft, and signing in again restores it.
 test('a session that ends mid-compose keeps the draft, and signing in again restores it', async ({ page }) => {
   const { api, problems } = await open(page)
   await tab(page, 'Composer').click()
@@ -37,6 +39,7 @@ test('a session that ends mid-compose keeps the draft, and signing in again rest
   expect(problems).toEqual([])
 })
 
+// Composing across three platforms: overflow is shown in words, blocks queueing, and a shortened text queues.
 test('composing across three platforms: overflow is shown in words, blocks queueing, and a shortened text queues', async ({ page }) => {
   const { api, problems } = await open(page)
   await tab(page, 'Composer').click()
@@ -70,6 +73,7 @@ test('composing across three platforms: overflow is shown in words, blocks queue
   expect(problems).toEqual([])
 })
 
+// A manual post is marked posted with where it went.
 test('a manual post is marked posted with where it went', async ({ page }) => {
   const { api, problems } = await open(page)
   await tab(page, 'Publishing').click()
@@ -84,6 +88,7 @@ test('a manual post is marked posted with where it went', async ({ page }) => {
   expect(problems).toEqual([])
 })
 
+// An uncertain send is resolved by a person, never retried automatically.
 test('an uncertain send is resolved by a person, never retried automatically', async ({ page }) => {
   const { api, problems } = await open(page)
   await tab(page, 'Publishing').click()
@@ -98,6 +103,7 @@ test('an uncertain send is resolved by a person, never retried automatically', a
   expect(problems).toEqual([])
 })
 
+// The public roadmap preview is the document the public site serves.
 test('the public roadmap preview is the document the public site serves', async ({ page }) => {
   const { problems } = await open(page)
   await tab(page, 'Roadmap').click()
@@ -110,6 +116,7 @@ test('the public roadmap preview is the document the public site serves', async 
   expect(problems).toEqual([])
 })
 
+// A hostile post is shown as text.
 test('a hostile post is shown as text', async ({ page }) => {
   const { problems } = await open(page)
   await tab(page, 'Composer').click()
@@ -123,6 +130,7 @@ test('a hostile post is shown as text', async ({ page }) => {
   expect(problems).toEqual([])
 })
 
+// Every section fits a phone: no horizontal scroll of the page.
 test('every section fits a phone: no horizontal scroll of the page', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 })
   const { problems } = await open(page)

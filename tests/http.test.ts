@@ -1,11 +1,15 @@
+// Tests of the HTTP layer (src/api/http.ts) and the words for a failure (src/api/errors.ts): same-origin only, the CSRF header on writes, three signs that the session ended,
+// the service's error body, an unreachable server, and messages for people that never leak internals.
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, SessionExpiredError, describeError } from '../src/api/errors.js'
 import { createHttp } from '../src/api/http.js'
 
+/** A fetch response with this status, body and content type (a 204 has no body). */
 function reply(status: number, body: unknown, type = 'application/json', extra: Partial<ResponseInit> = {}): Response {
   return new Response(status === 204 ? null : typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { 'content-type': type }, ...extra })
 }
 
+/** An HTTP client over a mocked fetch: the calls it made and a spy for the end-of-session callback. */
 function client(f: (url: string, init: RequestInit) => Promise<Response> | Response) {
   const calls: Array<{ url: string; init: RequestInit }> = []
   const expired = vi.fn()
@@ -17,6 +21,7 @@ function client(f: (url: string, init: RequestInit) => Promise<Response> | Respo
 }
 
 describe('the HTTP layer', () => {
+  // Every request goes to the admin prefix on this origin, with no credentials of its own and the CSRF header exactly on the writes.
   it('talks only to /api/v1 on this origin, with the CSRF header on writes and not on reads', async () => {
     const { http, calls } = client(() => reply(200, { ok: true }))
     await http.get('/stats', { a: 1, b: undefined, c: '', d: null, e: 'x y' })
@@ -35,6 +40,7 @@ describe('the HTTP layer', () => {
     }
   })
 
+  // Each of the four signs of an ended session raises the same error, and the console is told only once.
   it('treats a 401, a redirect to sign-in and a sign-in page as the session ending, and says so once', async () => {
     for (const make of [
       () => reply(401, { error: 'unauthorized', message: 'x' }),
@@ -49,6 +55,7 @@ describe('the HTTP layer', () => {
     }
   })
 
+  // The service's code, message and per-target problems survive into the error.
   it('maps the service error body, including the targets enqueue refused', async () => {
     const { http } = client(() =>
       reply(422, { error: 'invalid', message: 'some targets were refused', problems: [{ target_id: 3, problem: 'BLUESKY does not fit' }] }),
@@ -60,6 +67,7 @@ describe('the HTTP layer', () => {
     expect((e as ApiError).problems).toEqual([{ target_id: 3, problem: 'BLUESKY does not fit' }])
   })
 
+  // No answer is status 0; a 204 resolves to nothing.
   it('reports an unreachable server as status 0, and a 204 as nothing', async () => {
     const down = client(() => {
       throw new TypeError('Failed to fetch')
@@ -69,6 +77,7 @@ describe('the HTTP layer', () => {
     expect(await none.http.del('/tasks/1/links/2')).toBeUndefined()
   })
 
+  // What a person reads is fixed text, except where the server's own wording explains something they can act on.
   it('writes messages for people, without leaking internals', () => {
     expect(describeError(new SessionExpiredError())).toContain('Sign in again')
     expect(describeError(new ApiError(0, null, 'network'))).toContain('could not be reached')
