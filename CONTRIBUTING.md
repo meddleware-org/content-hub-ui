@@ -13,6 +13,7 @@ npm test                # unit and component tests
 npm run build           # type-check and the production build into dist/
 npm run check:licenses  # the third-party licence notices are complete
 npm run check:csp       # after a build: no inline script the Dockerfile CSP does not allow
+npm run check:dist      # after a build: no test support reached the build output
 npm run test:e2e        # browser tests of the built app (Chromium; E2E_BROWSERS=all for the five browsers)
 npm run shots           # after a layout change: capture, then look at the pictures
 ```
