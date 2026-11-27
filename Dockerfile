@@ -10,7 +10,7 @@ ARG CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 
 # The build stage runs on the BUILD host's architecture: its output (static files) is architecture-independent,
 # so no arm64 step runs under emulation. The final stage only COPYs into the multi-arch static-server image.
-FROM --platform=$BUILDPLATFORM node:26-slim@sha256:0d1e33586362bb9e608c4e751e7a9e7edb55c9ac11461ed5666af696cc461dd4 AS build
+FROM --platform=$BUILDPLATFORM node:26-slim@sha256:abe7e5a82b61a8ef67b315b85497c9e65173387ccf2f4a029248184b8e020be5 AS build
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ ARG CSP
 RUN npx mw-check-csp-inline "${CSP}" dist
 
 # ── runtime stage ─────────────────────────────────────────────────────────────
-FROM quay.io/meddleware-org/static-server:0.1.13@sha256:0952b3c64403ccd340827a13f2a4d96beed756a06edb6d5addac7697864e5b5d
+FROM quay.io/meddleware-org/static-server:0.1.14@sha256:27f3d7a61f19a95b3abfc991d813a178bc1995a15e60f16a35a8a5a6dda4ce8e
 ARG CSP
 ENV CONTENT_SECURITY_POLICY="${CSP}"
 
