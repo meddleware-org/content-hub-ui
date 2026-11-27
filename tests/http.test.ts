@@ -55,6 +55,23 @@ describe('the HTTP layer', () => {
     }
   })
 
+  // A service that signs people in itself names where a sign-in starts in its 401; only a short same-site /auth/ path is believed.
+  it('hands the console the sign-in path a 401 names, and ignores anything that is not a same-site /auth/ path', async () => {
+    const hint = async (signIn: unknown) => {
+      const { http, expired } = client(() => reply(401, { error: 'unauthorized', message: 'x', signIn }))
+      await expect(http.get('/me')).rejects.toBeInstanceOf(SessionExpiredError)
+      return expired.mock.calls[0]?.[0]
+    }
+    expect(await hint('/auth/login')).toBe('/auth/login')
+    for (const bad of ['https://evil.example/auth/login', '//evil.example/auth/login', '/other', 'javascript:alert(1)', 42, null, undefined]) {
+      expect(await hint(bad), String(bad)).toBeUndefined()
+    }
+    // A 401 with no JSON body at all still ends the session, with no hint.
+    const { http, expired } = client(() => reply(401, 'nope', 'text/plain'))
+    await expect(http.get('/me')).rejects.toBeInstanceOf(SessionExpiredError)
+    expect(expired).toHaveBeenCalledWith(undefined)
+  })
+
   // The service's code, message and per-target problems survive into the error.
   it('maps the service error body, including the targets enqueue refused', async () => {
     const { http } = client(() =>

@@ -19,6 +19,7 @@ export interface Harness {
   w: VueWrapper
   api: FakeApi
   reload: ReturnType<typeof vi.fn>
+  navigate: ReturnType<typeof vi.fn>
 }
 
 /** The sections load when first opened; loading them once first keeps every test's first open as fast as its second. */
@@ -28,9 +29,10 @@ const sections = Promise.all(Object.values(import.meta.glob('../../src/views/*.v
 export async function mountConsole(api = new FakeApi()): Promise<Harness> {
   await sections
   const reload = vi.fn()
-  const w = mount(ContentHubView, { props: { fetch: api.fetch as typeof fetch, reload }, attachTo: document.body })
+  const navigate = vi.fn()
+  const w = mount(ContentHubView, { props: { fetch: api.fetch as typeof fetch, reload, navigate }, attachTo: document.body })
   await settle()
-  return { w, api, reload }
+  return { w, api, reload, navigate }
 }
 
 /** Open the tab with this label and wait for its section to load. */

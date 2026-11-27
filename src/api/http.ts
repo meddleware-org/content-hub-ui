@@ -2,6 +2,8 @@
 // gateway holds the session in a cookie the browser sends), the CSRF header on every state-changing request, and one
 // definition of "the session ended".
 
+// A check that a path is a safe same-site link.
+import { safePath } from '@meddleware/web-utils'
 // The admin API's path prefix and the CSRF header name, shared with the service so they cannot drift.
 import { ADMIN_PREFIX, CSRF_HEADER } from '@meddleware/content-hub-client'
 // The two errors this module throws.
@@ -16,8 +18,8 @@ export type Query = Record<string, string | number | boolean | null | undefined>
 export interface HttpOptions {
   /** Injected for tests; defaults to the global `fetch`. */
   fetch?: typeof fetch
-  /** Called once when the session is found to have ended. */
-  onSessionExpired?: () => void
+  /** Called once when the session is found to have ended; `signIn` is the same-site path where a new sign-in starts, when the service named one. */
+  onSessionExpired?: (signIn?: string) => void
 }
 
 /** The five calls the console makes. Every path is relative to the admin prefix. */
@@ -48,12 +50,12 @@ export function createHttp(opts: HttpOptions = {}): Http {
   // True once the session is known to have ended, so the callback runs only once.
   let expired = false
   /** The one place the end of the session is decided: record it once, tell the console, and throw. */
-  const expire = (): never => {
+  const expire = (signIn?: string): never => {
     if (!expired) {
       // Remember it.
       expired = true
-      // Tell the console so it can show its banner.
-      opts.onSessionExpired?.()
+      // Tell the console so it can show its banner, and where to sign in again.
+      opts.onSessionExpired?.(signIn)
     }
     // Every caller sees the same error.
     throw new SessionExpiredError()
@@ -86,8 +88,12 @@ export function createHttp(opts: HttpOptions = {}): Http {
     }
     // A redirect means the gateway wants a sign-in: the session ended.
     if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) return expire()
-    // The API itself says the session ended.
-    if (res.status === 401) return expire()
+    // The API itself says the session ended; a service that signs people in itself also says where a sign-in starts (`signIn`, an /auth/ path on this site).
+    if (res.status === 401) {
+      // The body is untrusted: read it defensively, and accept only a short same-site /auth/ path.
+      const hint = ((await res.json().catch(() => null)) as { signIn?: unknown } | null)?.signIn
+      return expire(typeof hint === 'string' && hint.startsWith('/auth/') && safePath(hint) ? hint : undefined)
+    }
     // The content type tells JSON from the gateway's HTML sign-in page.
     const type = res.headers.get('content-type') ?? ''
     // No content: nothing to parse.

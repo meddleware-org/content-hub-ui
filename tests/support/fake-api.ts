@@ -81,6 +81,11 @@ export class FakeApi {
   me: Me = { subject: 'operator-1', display_name: 'op@example.org' }
   // True once the session has ended.
   expired = false
+  // When set, an ended session answers 401 with this `signIn` path (a service that signs people in itself) instead of the gateway's sign-in page.
+  signInHint: string | null = null
+  // The address the console's sign-out answer names (a provider's logout), and whether sign-out is refused.
+  logoutRedirect = 'https://accounts.example.org/logout?id_token_hint=x'
+  logoutRefused = false
   // Every request received, in order.
   calls: Call[] = []
   // The stop switch.
@@ -175,7 +180,13 @@ export class FakeApi {
     const csrf = Object.keys(headers).some((h) => h.toLowerCase() === CSRF_HEADER.toLowerCase())
     // Record the call before answering, so a test can inspect even refused ones.
     this.calls.push({ method, path, query, body, csrf })
-    // An ended session answers every request with the sign-in page.
+    // The console's own sign-out route (not under /api/v1): CSRF-checked like every write; it names where the provider's logout is.
+    if (method === 'POST' && path === '/auth/logout') {
+      if (!csrf) return err(403, 'forbidden', 'cross-site request refused')
+      return this.logoutRefused ? err(500, 'internal', 'internal error') : ok({ redirect: this.logoutRedirect })
+    }
+    // An ended session answers every request with the sign-in page, or (a service that signs people in itself) a 401 that says where to sign in.
+    if (this.expired && this.signInHint) return { status: 401, json: { error: 'unauthorized', message: 'authentication required', signIn: this.signInHint } }
     if (this.expired) return { status: 200, html: '<!doctype html><title>Sign in</title>' }
     // A write without the CSRF header is refused, as the real service does.
     if (method !== 'GET' && !csrf) return err(403, 'forbidden', 'missing the CSRF header')

@@ -23,7 +23,7 @@ import { SECTIONS } from './sections.js'
 // `fetch` and `reload` exist so hosts and tests can substitute them; the defaults are the browser's.
 const props = defineProps<Partial<ConsoleOptions>>()
 // The console context: HTTP, the signed-in person, the zone and the reference data.
-const c = createConsole({ fetch: props.fetch, reload: props.reload })
+const c = createConsole({ fetch: props.fetch, reload: props.reload, navigate: props.navigate })
 // Every section below reads it with `useConsole()`.
 provideConsole(c)
 
@@ -79,6 +79,8 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
     <SessionBanner />
     <!-- A failed identity read, in words. -->
     <UiNotice v-if="loadError && !c.expired.value" type="error" :message="loadError" />
+    <!-- A failed sign-out, in words. -->
+    <UiNotice v-if="c.signOutError.value" type="error" :message="c.signOutError.value" />
 
     <!-- Who is signed in, with sign-out and the time-zone choice. -->
     <div class="who">
@@ -86,7 +88,10 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
       <p class="who-name">
         <template v-if="c.me.value">Signed in as <strong>{{ c.me.value.display_name }}</strong></template>
         <template v-else>Checking who you are…</template>
-        <template v-if="safePath(SIGN_OUT_PATH)"> · <a :href="safePath(SIGN_OUT_PATH)">Sign out</a></template>
+        <!-- Signed in through the platform's identity provider: signing out ends this session and the provider's, through the console. -->
+        <template v-if="c.me.value?.via === 'oidc'"> · <button type="button" class="sign-out" @click="c.signOut()">Sign out</button></template>
+        <!-- Otherwise the access gateway signs out, through its own path. -->
+        <template v-else-if="safePath(SIGN_OUT_PATH)"> · <a :href="safePath(SIGN_OUT_PATH)">Sign out</a></template>
       </p>
       <!-- The zone times are shown and edited in; the choice is remembered on this device. -->
       <UiSelectField id="console-zone" :model-value="c.zone.value" label="Show times in" :options="zoneOptions" @update:model-value="c.setZone($event)" />
@@ -129,6 +134,19 @@ const zoneOptions = computed<Array<readonly [string, string]>>(() => {
 /* No default margin. */
 .who-name {
   margin: 0;
+}
+
+/* Signing out sends a request, so it is a button, drawn like the link it replaces (the accent colour, underlined, the text's own size). */
+.sign-out {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
 }
 
 /* A small gap under the title. */

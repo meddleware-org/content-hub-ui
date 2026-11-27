@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.0.14] - 2026-11-27
+
+- **Sign in and out through the platform's identity provider (ADR-0016 stage 6).** `GET /api/v1/me` now says `via` (`access` or `oidc`). When it is `oidc` the "Sign out" control is a button that posts to the console's own `/auth/logout` (with the CSRF header) and follows the provider's logout address in the answer (only an `https` address or a same-site path is followed; a failure says so and goes nowhere). A 401 from a service that signs people in itself names where a sign-in starts (`signIn`, accepted only as a same-site `/auth/` path); "Sign in again" then opens it instead of reloading the page. Behind Cloudflare Access nothing changes: the gateway's sign-out link and the reload stay.
+
 ## [0.0.13] - 2026-11-27
 
 

@@ -17,6 +17,8 @@ export interface Me {
   subject: string
   /** The name shown in the header. */
   display_name: string
+  /** Which sign-in path was used: `access` (the access gateway) or `oidc` (the platform's identity provider, which also signs out through the console). Absent from an older service. */
+  via?: 'access' | 'oidc'
 }
 
 /** A roadmap phase: a group of items, with an internal name for the team and a public name for the public roadmap. */

@@ -1,6 +1,8 @@
 // Component tests of the whole console (ContentHubView) against the fake admin API: the shell and the end of a session, then each section's behaviour (dashboard, roadmap, tasks, publishing,
 // budgets, schedule, composer). Every state-changing request must carry the CSRF header (checked after each test). Related: tests/support/ (the fake API and the mount helpers).
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import ContentHubView from '../src/ContentHubView.vue'
 import { TASK_STATUS_VALUES, taskMoveAllowed } from '@meddleware/content-hub-client'
 import { DRAFT_KEY } from '../src/lib/drafts.js'
 import { FakeApi } from './support/fake-api.js'
@@ -45,6 +47,66 @@ describe('the shell', () => {
     api.expire()
     h = await mountConsole(api)
     expect(panelText(h)).toContain('Your session has expired')
+  })
+})
+
+describe('signing in and out through the platform\'s identity provider', () => {
+  // A person signed in through the provider signs out through the console, and the browser goes to the provider's logout.
+  it('signs out through the console and follows the provider\'s logout address', async () => {
+    const api = new FakeApi()
+    api.me = { ...api.me, via: 'oidc' }
+    h = await mountConsole(api)
+    // A button, not the gateway's link.
+    expect(h.w.find('a[href="/cdn-cgi/access/logout"]').exists()).toBe(false)
+    await click(h.w, 'Sign out')
+    const calls = h.api.callsTo('POST', '/auth/logout')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.csrf).toBe(true)
+    expect(h.navigate).toHaveBeenCalledWith('https://accounts.example.org/logout?id_token_hint=x')
+  })
+
+  // The gateway's sign-out stays for a sign-in through the gateway, and for a service that does not say.
+  it('keeps the gateway\'s sign-out link when the sign-in came through the gateway', async () => {
+    for (const via of ['access', undefined] as const) {
+      const api = new FakeApi()
+      api.me = { ...api.me, via }
+      const m = await mountConsole(api)
+      expect(m.w.find('a[href="/cdn-cgi/access/logout"]').text()).toBe('Sign out')
+      expect(m.w.findAll('button').some((b) => b.text() === 'Sign out')).toBe(false)
+      m.w.unmount()
+    }
+  })
+
+  // A sign-out that fails says so and goes nowhere; an address that is not https or same-site is never followed.
+  it('says so when sign-out fails and never follows an unsafe address', async () => {
+    const api = new FakeApi()
+    api.me = { ...api.me, via: 'oidc' }
+    api.logoutRefused = true
+    h = await mountConsole(api)
+    await click(h.w, 'Sign out')
+    expect(h.w.text()).toContain('Could not sign out')
+    expect(h.navigate).not.toHaveBeenCalled()
+    for (const unsafe of ['javascript:alert(1)', 'http://evil.example/', '//evil.example/x']) {
+      api.logoutRefused = false
+      api.logoutRedirect = unsafe
+      await click(h.w, 'Sign out')
+      expect(h.navigate, unsafe).not.toHaveBeenCalled()
+    }
+  })
+
+  // When the service names where a sign-in starts, "Sign in again" opens it (the default action, so no reload is injected here).
+  it('opens the sign-in the service names when the session has ended', async () => {
+    const api = new FakeApi()
+    api.signInHint = '/auth/login'
+    const navigate = vi.fn()
+    const w = mount(ContentHubView, { props: { fetch: api.fetch as typeof fetch, navigate }, attachTo: document.body })
+    await settle()
+    api.expire()
+    await click(w, 'Refresh')
+    expect(w.text()).toContain('Your session has expired')
+    await click(w, 'Sign in again')
+    expect(navigate).toHaveBeenCalledWith('/auth/login')
+    w.unmount()
   })
 })
 
